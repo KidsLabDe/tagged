@@ -117,7 +117,7 @@ class RC522:
         self.w(TReloadRegL, 0xE8)
         self.w(TxASKReg, 0x40)
         self.w(ModeReg, 0x3D)
-        self.w(RFCfgReg, 0x70)  # maximale Empfangsverstaerkung (48 dB)
+        self.w(RFCfgReg, 0x50)  # 38 dB Empfangsverstaerkung; 48 dB uebersteuert bei aufliegender Karte
         self.antenna(True)
 
     def antenna(self, on):

@@ -21,7 +21,7 @@ TOKEN = os.getenv("TAGGED_TOKEN", "")
 # RC522 (SDA = Chip Select) und LED-Streifen je Board, als GPIO-Nummer
 PINS = {
     "s2mini": {"sda": 12, "sck": 7, "mosi": 11, "miso": 9, "rst": 5, "leds": 40},  # Standard-SPI-Pins des S2 Mini
-    "c6": {"sda": 0, "sck": 1, "mosi": 2, "miso": 3, "rst": 4, "leds": 14},  # linke Leiste, LEDs rechts
+    "c6": {"sda": 0, "sck": 1, "mosi": 2, "miso": 3, "rst": 4, "leds": 20},  # RC522 linke Leiste, LEDs rechts neben 3V3
 }
 CHIP = {"s2mini": "ESP32S2", "c6": "ESP32C6"}
 
@@ -180,7 +180,7 @@ def react(res):
             wave(color)
     elif r == "captured":
         wave(color)
-    elif r in ("own", "team"):
+    elif r in ("own", "team", "over"):
         blink(color, 1)
     elif r == "locked":
         flicker(color)
