@@ -1,0 +1,5 @@
+*.FCBak
+*.tmp
+__pycache__/
+circuitpython/karten-log.txt
+specs/
