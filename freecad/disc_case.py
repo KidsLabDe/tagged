@@ -1,4 +1,4 @@
-# Disc-Gehaeuse: RC522 + Lolin S2 Mini + TP4056 (USB-C) + 18650 + WS2812B-Streifen + Schiebeschalter
+# Disc-Gehaeuse: RC522 + ESP32-C6 Super Mini (mit Lader) + 18650 + WS2812B-Streifen + KCD1-Wippschalter
 # Ausfuehren in FreeCAD (Makro oder MCP Bridge). Erzeugt Dokument "DiscCase" und STLs in OUT_DIR.
 # Koordinaten: x = Breite (0 = Mitte), y = Laenge (0 = Innenkante unten, USB-Seite), z = Dicke (0 = Rueckseite)
 import os
@@ -33,13 +33,24 @@ BOSS_R = 4.0 if INSERTS else 3.5
 # Bauteile
 RC522 = (40.0, 60.0, 1.6)
 RC522_CY = 100.0
-S2MINI = (25.4, 34.3)
-S2MINI_X0 = -23.4
-TP4056 = (17.3, 28.0)
-TP4056_X0 = 6.1
-BATT_HOLDER = (77.0, 21.0, 19.0)  # 1x18650 Halter
-BATT_Y0 = 42.0
-SWITCH_Y = 32.0  # SS12D00-Schiebeschalter in der rechten Seitenwand
+# ESP32-C6 Super Mini, USB-C an der unteren Wand. Akku-Pads liegen auf der Unterseite: Das Board liegt deshalb
+# auf zwei Stegen C6_LIFT ueber dem Boden, darunter ein Kabelkanal mit Ausgang Richtung Akku.
+C6 = (18.0, 22.5, 1.2)  # Breite x, Laenge y, Dicke
+C6_LIFT = 3.0
+# 18650 quer in einem Flexbatter-Halter (gedruckte Feder am Minuspol, Kontakte = Drahtwindungen durch die Schlitze),
+# im Boden versenkt. Original fuer 18650: l=65.5, hf=0.75 -> 79 mm lang, passt nicht zwischen die LEDs.
+# Hier kuerzer (mehr Vorspannung der Feder) und niedriger (Feder bleibt unter den LEDs). Nur ungeschuetzte Zellen.
+BATT_L, BATT_D, BATT_HF = 64.0, 18.4, 0.6  # Flexbatter-Parameter l, d, hf
+BATT_CY = 40.0
+# KCD1-Wippschalter in der Rueckwand, in einer Mulde versenkt, damit er beim Aufhaengen nicht aufliegt
+KCD1_CUT = (13.0, 19.2)  # Einbauoeffnung x, y
+KCD1_BEZEL = (15.0, 21.0)  # Rahmen aussen
+KCD1_DEPTH = 17.0  # Koerper + Loetfahnen unter der Platte
+KCD1_POS = (29.0, 82.0)
+KCD1_WELL, KCD1_PANEL = 3.0, 1.6  # Muldentiefe von hinten, Plattenstaerke (Rastnasen: 1-2 mm)
+# Haken oben zum Aufhaengen (flach in der Rueckenebene, z.B. auf Naegel oder Schrauben)
+HOOK_X = 12.0  # Abstand des Stiels von der Mitte
+HOOK_W, HOOK_T, HOOK_RI, HOOK_GAP = 5.0, 4.0, 3.0, 5.0  # Stegbreite, Dicke, Innenradius, Einfaedelspalt
 SCREWS = [(-33, 20), (33, 20), (-33, 100), (33, 100)]
 LANYARD = (0.0, 140.0)
 
@@ -137,6 +148,102 @@ def logo_solid(station):
     return logo
 
 
+# --- Flexbatter -----------------------------------------------------------------------------------------------
+# Portiert aus flexbatter.scad von Heinz Spiess (2014, CC BY-SA, https://www.thingiverse.com/thing:456900),
+# n=1, ohne Schraubloecher und ohne Kanaele in der Unterseite (die liegt hier auf dem Gehaeuseboden).
+FB_EW = 0.56
+FB_W, FB_WS = 4 * FB_EW, 2 * FB_EW  # Wand, Federwand
+FB_CH = FB_W - FB_WS
+
+
+def fb_arc(r1, r2, h, a):
+    """Ringsektor von 180 bis 180+a Grad (wie arc(r1, r2, a1=a, a2=0) im Original)."""
+    s = Part.makeCylinder(r2, h, App.Vector(0, 0, 0), App.Vector(0, 0, 1), a).cut(cyl(r1, h + 2, 0, 0, -1))
+    s.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), 180)
+    return s
+
+
+def fb_sline(angle, radius, i, w, h):
+    """Schlangenlinie aus Boegen (angle != 0) und Geraden (angle == 0, Laenge radius), wie sline() im Original."""
+    a, r = angle[i], abs(radius[i])
+    parts = [box(-w / 2, -r - 0.01, 0, w, 0.02, h)]
+    if a:
+        parts.append(fb_arc(r - w / 2, r + w / 2, h, abs(a)))
+    elif r > 0:
+        parts.append(box(-w / 2, -r, 0, w, r, h))
+    if i + 1 < len(angle):
+        sub = fb_sline(angle, radius, i + 1, w, h)
+        sub.translate(App.Vector(-r, 0, 0) if a else App.Vector(0, -r, 0))
+        sub.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), a)
+        parts.append(sub)
+    s = parts[0].fuse(parts[1:])
+    if a:
+        s.translate(App.Vector(r, 0, 0))
+    if a < 0:
+        s = s.mirror(App.Vector(0, 0, 0), App.Vector(1, 0, 0))
+    return s
+
+
+def flexbatter(l, d, hf, el=0.0, eps=0.28):
+    """Halter in eigenen Koordinaten: Akku entlang x, Minuspol (Feder) bei x=0, Pluspol bei x=l, Unterseite z=0."""
+    w, ws, ch = FB_W, FB_WS, FB_CH
+    r = d / 5 + 2 * ws
+    hb = hf * d + w + ch
+    body = box(0, -w - d / 2, 0, l + w, d + 2 * w, hb)
+    body = body.makeChamfer(ch, [e for e in body.Edges if e.BoundBox.ZMax > 1e-6])
+    body = body.cut([box(-2, -d / 2, w, 2 + l, d, d + 1), box(-1, -d / 2, -1, 2, d, d + w + 2),
+                     Part.makeCylinder(d / 2 + eps, l + 1, App.Vector(-1, 0, d / 2 + w), App.Vector(1, 0, 0))])
+    D = d + 2 * w - 2 * ws - 0.7
+    springs = []
+    for sy in (1, -1):
+        sp = fb_sline([0, 180, 0, 180, 0, -180, 0, 90, 0],
+                      [r + ch + el, D / 4, el, D / 12, el / 2, D / 12, 1 + el / 2, D / 5, D / 3], 0, ws, hf * d + w)
+        sp.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), -90)
+        sp.translate(App.Vector(ch, d / 2 + w - ws / 2, 0))
+        springs.append(sp if sy > 0 else sp.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0)))
+    h = body.fuse(springs)
+    cut = []
+    # Schlitze fuer die Kontaktwindungen (Plus- und Minuspol)
+    for z in (-2 * ws, 2 * ws):
+        cut.append(box(-2 * ws, -w, w - ws / 2 + d / 2 + z, l + 2 * w + 2, 2 * w, ws))
+    # Durchgaenge fuer Draehte unten in den Seitenwaenden und an der Plus-Stirnwand
+    for sy in (1, -1):
+        for c in [box(l - 1, -d / 2, w, w + 2, 2, 2)] + [box(x, -d / 2 - w - ws - 1, w, 3, w + ws + 3, 2) for x in (3, l - 7)]:
+            cut.append(c if sy < 0 else c.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0)))
+    # Gravur: Akku-Symbol, Plus und Minus
+    eh = 0.25
+    for cx, cy, dx, dy in ((w + l / 2, d / 4 + 1, l / 5, d / 4.5), (w + l / 2 + l / 10, d / 4 + 1, d / 7, d / 10),
+                           (w + l / 2 + l / 5, d / 4 + 1, 1, d / 4), (w + l / 2 + l / 5, d / 4 + 1, d / 4, 1),
+                           (w + l / 2 - l / 5, d / 4 + 1, 1, d / 4)):
+        cut.append(box(cx - dx / 2, cy - dy / 2, w - 2 * eh, dx, dy, 4 * eh))
+    h = h.cut(cut)
+    # Kontaktbuckel quer an beiden Polen
+    bulges = []
+    for x in (-0.3, l):
+        bulges += [Part.makeCylinder(ws, 6, App.Vector(x, -3, w + d / 2), App.Vector(0, 1, 0)),
+                   Part.makeSphere(ws, App.Vector(x, -3, w + d / 2)), Part.makeSphere(ws, App.Vector(x, 3, w + d / 2))]
+    return h.fuse(bulges).removeSplitter()
+
+
+_HOLDER = {}
+
+
+def holder_x_range():
+    """Halter so verschieben, dass er inklusive Feder mittig liegt: Rueckgabe (x des Minuspols, Gesamtlaenge)."""
+    key = (BATT_L, BATT_D, BATT_HF)
+    if key not in _HOLDER:
+        _HOLDER[key] = flexbatter(*key)
+    bb = _HOLDER[key].BoundBox
+    return -(bb.XMin + bb.XMax) / 2, bb.XLength
+
+
+def battery_holder():
+    x0, _ = holder_x_range()
+    h = _HOLDER[(BATT_L, BATT_D, BATT_HF)].copy()
+    h.translate(App.Vector(x0, BATT_CY, 0))  # Unterseite auf der Rueckseite, Boden des Halters ersetzt den Gehaeuseboden
+    return h
+
+
 def make_base():
     outer = rrect(W_IN + 2 * WALL, L_IN + 2 * WALL, R_IN + WALL, Z_TOP)
     inner = rrect(W_IN, L_IN, R_IN, H_IN + 1, FLOOR)
@@ -147,29 +254,47 @@ def make_base():
     base = outer.cut(inner).cut(led).cut(led_chamfer)
 
     add = []
-    # Rahmen fuer S2 Mini und TP4056 (3 Seiten, offen zur USB-Wand)
-    for x0, (bw, bl) in ((S2MINI_X0, S2MINI), (TP4056_X0, TP4056)):
-        g, t = CLR, 1.2
-        add += [box(x0 - g - t, 0, FLOOR, t, bl + g + t, 3),
-                box(x0 + bw + g, 0, FLOOR, t, bl + g + t, 3),
-                box(x0 - g - t, bl + g, FLOOR, bw + 2 * g + 2 * t, t, 3)]
-    # Schienen fuer den 18650-Halter
-    hw = BATT_HOLDER[1] + 0.6
-    add += [box(-38, BATT_Y0 - 1.2, FLOOR, 76, 1.2, 4), box(-38, BATT_Y0 + hw, FLOOR, 76, 1.2, 4)]
-    # Fuehrung fuer den Schiebeschalter (Koerper 8.6 x 3.6 mm)
-    sg = 4.3 + CLR / 2
-    add += [box(W_IN / 2 - 5, SWITCH_Y - sg - 1.2, FLOOR, 5, 1.2, 4), box(W_IN / 2 - 5, SWITCH_Y + sg, FLOOR, 5, 1.2, 4)]
+    # Board-Rahmen fuer den C6 Super Mini (3 Seiten, offen zur USB-Wand), Board liegt auf zwei Stegen
+    bw, bl, bt = C6
+    x0, g, t = -bw / 2, CLR, 1.2
+    hf = C6_LIFT + bt + 1.0
+    add += [box(x0 - g - t, 0, FLOOR, t, bl + g + t, hf),
+            box(x0 + bw + g, 0, FLOOR, t, bl + g + t, hf),
+            box(x0 - g - t, bl + g, FLOOR, bw + 2 * g + 2 * t, t, hf),
+            box(x0 - g, 0, FLOOR, bw + 2 * g, 2.0, C6_LIFT),
+            box(x0 - g, bl - 2.0, FLOOR, bw + 2 * g, 2.0 + g, C6_LIFT)]
+    # 18650-Halter
+    add.append(battery_holder())
+    # Mulde mit Platte fuer den KCD1 (Rueckwand lokal verstaerkt)
+    kx, ky = KCD1_POS
+    ex, ey = KCD1_BEZEL
+    add.append(box(kx - ex / 2 - 2.5, ky - ey / 2 - 2.5, 0, ex + 5, ey + 5, KCD1_WELL + KCD1_PANEL))
+    # Haken oben, nach aussen gebogen; der Nagel wird durch den Spalt zwischen Hakenspitze und Kante eingefaedelt
+    y_edge = L_IN + WALL
+    yc = y_edge + HOOK_GAP + 3.0
+    for sx in (-1, 1):
+        xs = sx * HOOK_X
+        xc = sx * (HOOK_X + HOOK_W / 2 + HOOK_RI)
+        arc = cyl(HOOK_RI + HOOK_W, HOOK_T, xc, yc, 0).cut(cyl(HOOK_RI, HOOK_T + 2, xc, yc, -1)).common(
+            box(xc - 20, yc, -1, 40, 20, HOOK_T + 2))
+        tip_x = xc + sx * HOOK_RI if sx > 0 else xc - HOOK_RI - HOOK_W
+        add += [box(xs - HOOK_W / 2, L_IN, 0, HOOK_W, yc - L_IN, HOOK_T), arc,
+                box(tip_x, y_edge + HOOK_GAP, 0, HOOK_W, yc - y_edge - HOOK_GAP, HOOK_T),
+                cyl(HOOK_W / 2, HOOK_T, tip_x + HOOK_W / 2, y_edge + HOOK_GAP, 0)]
     # Rohr fuer die Kordel
     add.append(cyl(5.0, Z_TOP, LANYARD[0], LANYARD[1], 0))
     base = base.fuse(add)
 
     cut = []
-    # USB-C-Oeffnungen in der unteren Wand
-    for x0, (bw, bl) in ((S2MINI_X0, S2MINI), (TP4056_X0, TP4056)):
-        cx = x0 + bw / 2
-        cut.append(box(cx - 5.5, -WALL - 1, FLOOR + 0.25, 11, WALL + 1.5, 5.5))
-    # Schlitz fuer den Schalterhebel
-    cut.append(box(W_IN / 2 - 0.5, SWITCH_Y - 3.5, FLOOR + 0.65, WALL + 1.5, 7, 2.2))
+    # USB-C-Oeffnung in der unteren Wand
+    zc = FLOOR + C6_LIFT + bt + 1.6
+    cut.append(box(-5.5, -WALL - 1, zc - 2.75, 11, WALL + 1.5, 5.5))
+    # Kabelkanal unter dem Board Richtung Akku
+    cut.append(box(-4.0, bl - 3.0, FLOOR, 8.0, g + t + 4.0, C6_LIFT))
+    # KCD1: Mulde von hinten und Einbauoeffnung
+    cut.append(box(kx - ex / 2 - 0.5, ky - ey / 2 - 0.5, -1, ex + 1, ey + 1, KCD1_WELL + 1))
+    cx_, cy_ = KCD1_CUT
+    cut.append(box(kx - cx_ / 2, ky - cy_ / 2, -1, cx_, cy_, KCD1_WELL + KCD1_PANEL + 2))
     # Schraubenloecher mit Senkung (Rueckseite)
     for x, y in SCREWS:
         cut.append(cyl(1.7, FLOOR + 1, x, y, -0.5))
@@ -202,14 +327,16 @@ def make_dummies():
     d = {}
     rw, rl, rt = RC522
     d["RC522"] = box(-rw / 2, RC522_CY - rl / 2, Z_TOP - rt, rw, rl, rt)
-    d["S2Mini"] = box(S2MINI_X0, 0, FLOOR, S2MINI[0], S2MINI[1], 1.0).fuse(
-        box(S2MINI_X0 + S2MINI[0] / 2 - 4.5, -0.5, FLOOR + 1.0, 9, 7.5, 3.2))
-    d["TP4056"] = box(TP4056_X0, 0, FLOOR, TP4056[0], TP4056[1], 1.6).fuse(
-        box(TP4056_X0 + TP4056[0] / 2 - 4.5, -0.5, FLOOR + 1.6, 9, 7.5, 3.2))
-    bl, bw, bh = BATT_HOLDER
-    d["Akku18650"] = box(-bl / 2, BATT_Y0 + 0.3, FLOOR, bl, bw, bh)
-    d["Schalter"] = box(W_IN / 2 - 3.6, SWITCH_Y - 4.3, FLOOR, 3.6, 8.6, 3.5).fuse(
-        box(W_IN / 2, SWITCH_Y - 0.75, FLOOR + 1.0, 3.5, 1.5, 1.5))
+    bw, bl, bt = C6
+    d["C6SuperMini"] = box(-bw / 2, 0, FLOOR + C6_LIFT, bw, bl, bt).fuse(
+        box(-4.5, -0.5, FLOOR + C6_LIFT + bt, 9, 7.5, 3.2))
+    # Zelle zwischen den Kontaktbuckeln (die echte Zelle drueckt die Feder um ca. 2-3 mm zusammen)
+    x0, _ = holder_x_range()
+    d["Akku18650"] = Part.makeCylinder(BATT_D / 2, BATT_L - 2.3, App.Vector(x0 + 1.0, BATT_CY, 2.24 + BATT_D / 2),
+                                       App.Vector(1, 0, 0))
+    kx, ky = KCD1_POS
+    d["Schalter"] = box(kx - KCD1_BEZEL[0] / 2, ky - KCD1_BEZEL[1] / 2, KCD1_WELL - 2.0, KCD1_BEZEL[0], KCD1_BEZEL[1],
+                        2.0).fuse(box(kx - 6.4, ky - 9.5, KCD1_WELL, 12.8, 19.0, KCD1_PANEL + KCD1_DEPTH))
     strip_outer = rrect(W_IN + 2 * LED_RECESS, L_IN + 2 * LED_RECESS, R_IN + LED_RECESS, 10, LED_Z0 + 0.4)
     strip_inner = rrect(W_IN - 2.0, L_IN - 2.0, R_IN - 1.0, 12, LED_Z0)
     d["LED_Streifen"] = strip_outer.cut(strip_inner)
@@ -243,7 +370,7 @@ def build():
     try:
         import FreeCADGui as Gui
         colors = {"Unterteil": (0.85, 0.75, 0.9), "Deckel": (0.9, 0.8, 0.95), "Deckel_Logo": (0.1, 0.1, 0.1),
-                  "Bauteil_RC522": (0.1, 0.3, 0.8), "Bauteil_S2Mini": (0.2, 0.2, 0.2), "Bauteil_TP4056": (0.1, 0.3, 0.8),
+                  "Bauteil_RC522": (0.1, 0.3, 0.8), "Bauteil_C6SuperMini": (0.2, 0.2, 0.2),
                   "Bauteil_Akku18650": (0.2, 0.6, 0.2), "Bauteil_Schalter": (0.9, 0.5, 0.1),
                   "Bauteil_LED_Streifen": (1.0, 0.95, 0.9)}
         for name, o in objs.items():
