@@ -6,7 +6,7 @@ RFID-Station für Spiele im KidsLab: Karte an die Disc halten, die Station erken
 
 - ESP32-Board mit CircuitPython (Gehäuse: ESP32-C6 Super Mini mit Laderegler, Akku-Pads auf der Unterseite; getestet außerdem: Waveshare ESP32-C6-Zero, Lolin S2 Mini)
 - RC522 RFID-Leser (13,56 MHz, ISO14443A)
-- 18650-Akku (ungeschützt, 65 mm) im eingedruckten Flexbatter-Halter mit Kunststofffeder
+- 18650-Akku mit direkt angelöteten Kabeln, in zwei Klammern im Unterteil
 - WS2812B-LED-Streifen (10 mm)
 - KCD1-Wippschalter (Einbauöffnung 19,2 × 13 mm) in der Rückwand
 - 4× M3-Gewindeeinsatz + M3×8 Senkkopfschraube
@@ -25,8 +25,8 @@ RFID-Station für Spiele im KidsLab: Karte an die Disc halten, die Station erken
 
 ### Einbau
 
-- **Akku:** Der Halter ist ins Unterteil eingedruckt, Minuspol links an der gedruckten Feder, Pluspol rechts. Als Kontakt legst du an jedem Ende das abisolierte Kabelende mit ein paar Windungen durch die beiden Schlitze in Stirnwand bzw. Federplatte, so dass der Draht quer über dem Pol liegt. Die Kabel gehen unten durch die Öffnungen in den Seitenwänden raus. Der Halter ist kürzer als das Original (`BATT_L` 64 statt 65,5 mm), damit er zwischen die LEDs passt. Die Feder ist dadurch stärker vorgespannt, geschützte Zellen passen nicht.
-- **C6 Super Mini:** Er liegt auf zwei Stegen 3 mm über dem Boden, darunter ist ein Kabelkanal mit Ausgang Richtung Akku. BAT+/BAT– zuerst unten anlöten, die Kabel flach in den Kanal legen und erst dann das Board einsetzen (ggf. mit einem Tropfen Heißkleber fixieren).
+- **Akku:** Die Kabel direkt an die Zelle löten (Pole kurz anrauen, heißer Kolben, schnell arbeiten) und die Zelle von oben in die zwei Klammern drücken. Sie liegt quer auf dem Boden, Platz ist für Zellen bis etwa 75 mm.
+- **C6 Super Mini:** Es gibt keinen Halter mehr, das Board wird mit Heißkleber fixiert, USB-C mittig in die Öffnung der unteren Wand. Die Öffnung ist 11 mm breit und reicht vom Boden bis unter die LED-Nut, damit das Board auch mit den Akku-Kabeln an den Pads unten noch passt. BAT+/BAT– vor dem Einkleben anlöten.
 - **Schalter:** Er sitzt von hinten versenkt in einer 3 mm tiefen Mulde, damit er beim Aufhängen möglichst wenig aufliegt, und wird von hinten eingeklipst.
 - **Aufhängen:** Oben sind zwei flache Haken in der Rückenebene, z. B. für zwei Nägel oder Schrauben (Schaft bis 5 mm). Alternativ geht eine Kordel durch das Loch oben.
 
@@ -42,7 +42,7 @@ RC522 und LEDs (`code.py`, Board über `TAGGED_BOARD` in `settings.toml` wählen
 | RC522 3.3V | 3V3 | 3V3 |
 | LED-Streifen DIN (25 LEDs im Kreis) | IO40 | GPIO20 |
 
-Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; auf der anderen Leiste liegen GND, 3V3 und GPIO20 (LEDs) direkt nebeneinander. GPIO8 (eingebaute RGB-LED), GPIO9 (BOOT) und GPIO15 (Status-LED) frei lassen. In die DIN-Leitung am besten 330 Ω, am Streifenanfang einen Elko (100–470 µF) zwischen + und GND.
+Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; auf der anderen Leiste liegen GND, 3V3 und GPIO20 (LEDs) direkt nebeneinander. GPIO8 (eingebaute RGB-LED), GPIO9 (BOOT) und GPIO15 (Status-LED) frei lassen. Die eingebaute RGB-LED schaltet `code.py` aus. In die DIN-Leitung am besten 330 Ω, am Streifenanfang einen Elko (100–470 µF) zwischen + und GND.
 
 `kartentest.py` ist für den ESP32-C6-Zero (SDA IO0, SCK IO1, MOSI IO2, MISO IO3, RST IO4).
 
@@ -60,7 +60,6 @@ Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; a
 - `docker-compose.yml`, `.github/workflows/deploy.yml`: Deployment wie bei kidslab.de (Image auf GHCR, Traefik)
 - `freecad/`: parametrisches Gehäuse
   - `disc_case.py`: in FreeCAD ausführen, erzeugt `DiscCase.FCStd`, STLs, 3MFs und Vorschaubilder
-  - Der Akkuhalter ist aus [Flexbatter](https://www.thingiverse.com/thing:456900) von Heinz Spiess portiert (CC BY-SA)
   - `group_3mf.py`: baut die Bambu-Studio-3MF (Deckel + Logo als ein Objekt, Logo auf Filament 2)
   - `DiscCase_Druck_Bambu.3mf`: druckfertig für Bambu Lab (X1C-Profil, Unterteil + zweifarbiger Deckel von Station 1)
   - `DiscCase_Unterteil.stl`: nur das Unterteil
@@ -95,7 +94,7 @@ Dann auf den Boards `TAGGED_SERVER = "<IP des Laptops>:8090"` setzen.
 
 ## Firmware aufspielen
 
-Der S2 Mini taucht mit CircuitPython als Laufwerk `CIRCUITPY` auf: `code.py`, `net.py` und `rc522.py` einfach draufkopieren, dazu eine `settings.toml` nach der Vorlage `settings.toml.example`. Alle Boxen haben dieselbe `code.py`, nur `TAGGED_BOX_ID` (und ggf. `TAGGED_BOARD`) unterscheidet sich.
+Der S2 Mini taucht mit CircuitPython als Laufwerk `CIRCUITPY` auf: `code.py`, `net.py` und `rc522.py` einfach draufkopieren, dazu eine `settings.toml` nach der Vorlage `settings.toml.example`. Alle Boxen haben dieselbe `code.py`, nur `TAGGED_BOX_ID` (und ggf. `TAGGED_BOARD`) unterscheidet sich. Die Helligkeit des LED-Rings stellt `TAGGED_BRIGHTNESS` in Prozent ein (Standard 25).
 Für Boards ohne USB-Laufwerk (z. B. ESP32-C6):
 
 ```sh

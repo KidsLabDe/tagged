@@ -8,6 +8,7 @@ import busio
 import digitalio
 import microcontroller
 import neopixel_write
+import supervisor
 from net import Net
 from rc522 import RC522
 
@@ -16,12 +17,14 @@ BOARD = os.getenv("TAGGED_BOARD", "s2mini")  # "s2mini" (Lolin S2 Mini) oder "c6
 BOX_ID = int(os.getenv("TAGGED_BOX_ID", 1))  # Nummer der Box (1-5), passend zur Ziffer auf dem Deckel
 SERVER = os.getenv("TAGGED_SERVER", "fangulus.kidslab.de")  # Host, optional mit :Port
 TOKEN = os.getenv("TAGGED_TOKEN", "")
+BRIGHTNESS = int(os.getenv("TAGGED_BRIGHTNESS", 25)) / 100  # Prozent; 25 LEDs voll weiss waeren ~1.5 A
 # --------------------------------------------------------------------------------------------------------------
 
 # RC522 (SDA = Chip Select) und LED-Streifen je Board, als GPIO-Nummer
 PINS = {
     "s2mini": {"sda": 12, "sck": 7, "mosi": 11, "miso": 9, "rst": 5, "leds": 40},  # Standard-SPI-Pins des S2 Mini
-    "c6": {"sda": 0, "sck": 1, "mosi": 2, "miso": 3, "rst": 4, "leds": 20},  # RC522 linke Leiste, LEDs rechts neben 3V3
+    "c6": {"sda": 0, "sck": 1, "mosi": 2, "miso": 3, "rst": 4, "leds": 20,  # RC522 linke Leiste, LEDs rechts neben 3V3
+           "onboard_rgb": 8, "onboard_led": 15},  # eingebaute LEDs, werden ausgeschaltet
 }
 CHIP = {"s2mini": "ESP32S2", "c6": "ESP32C6"}
 
@@ -34,10 +37,9 @@ if BOARD not in PINS:
     raise ValueError("TAGGED_BOARD muss 's2mini' oder 'c6' sein, nicht %r" % BOARD)
 if CHIP[BOARD] not in os.uname().machine.replace("-", "").upper():
     print("!!! TAGGED_BOARD = %r passt nicht zum Chip: %s" % (BOARD, os.uname().machine))
-print("Tagged! Box %d auf %s, Server %s" % (BOX_ID, BOARD, SERVER))
+print("Tagged! Box %d auf %s, Server %s, Helligkeit %d%%" % (BOX_ID, BOARD, SERVER, BRIGHTNESS * 100))
 
 NUM_LEDS = 25
-BRIGHTNESS = 0.25  # 25 LEDs voll weiss waeren ~1.5 A, das schont Akku und Augen
 
 SPIN_TIME = 1.6  # Sekunden pro Umlauf
 TAIL = 10  # Laenge des Schweifs in LEDs
@@ -51,6 +53,25 @@ OFFLINE_AFTER = 3  # so viele Fehlversuche, bevor die Station "offline" zeigt
 WHITE = (200, 200, 200)
 ORANGE = (255, 80, 0)
 
+def onboard_leds_off():
+    """Eingebaute LEDs des Boards aus (C6 Super Mini: RGB auf GPIO8 zeigt sonst den CircuitPython-Status)."""
+    supervisor.runtime.rgb_status_brightness = 0
+    keep = []
+    try:
+        if "onboard_rgb" in PINS[BOARD]:
+            p = digitalio.DigitalInOut(gpio("onboard_rgb"))
+            p.switch_to_output()
+            neopixel_write.neopixel_write(p, bytes(3))
+            keep.append(p)
+        if "onboard_led" in PINS[BOARD]:
+            keep.append(digitalio.DigitalInOut(gpio("onboard_led")))
+            keep[-1].switch_to_output(False)
+    except Exception as e:
+        print("Onboard-LEDs:", type(e).__name__, e)
+    return keep  # Pins festhalten, sonst gibt CircuitPython sie wieder frei
+
+
+onboard = onboard_leds_off()
 pin = digitalio.DigitalInOut(gpio("leds"))
 pin.switch_to_output()
 buf = bytearray(NUM_LEDS * 3)

@@ -85,6 +85,8 @@ class Game:
 
     def start(self):
         with self.lock:
+            if self.phase == "running":  # z.B. Doppelklick auf Start: laufendes Spiel nicht neu starten
+                return
             self.phase = "running"
             self.owner = [None] * STATIONS
             self.locked_until = [0.0] * STATIONS

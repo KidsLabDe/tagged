@@ -44,6 +44,14 @@
   .events li:last-child { border: 0; }
   .events time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 10px; }
 
+  .howto { background: var(--panel); border-radius: 14px; padding: 18px 24px; display: none; }
+  .howto.show { display: block; }
+  .howto .who { font-size: 24px; margin: 0 0 14px; }
+  .howto ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .howto li { display: flex; gap: 14px; align-items: center; font-size: 24px; line-height: 1.25; }
+  .howto .n { font-size: 64px; line-height: 1; color: var(--muted); }
+  .howto .fine { color: var(--muted); font-size: 17px; margin: 14px 0 0; }
+
   details { background: var(--panel); border-radius: 14px; padding: 12px 18px; }
   details summary { cursor: pointer; margin: 0; }
   .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; margin-top: 12px; }
@@ -51,6 +59,7 @@
   input, select, button { font: inherit; color: var(--text); background: var(--bg); border: 2px solid var(--line); border-radius: 10px; padding: 8px 12px; }
   input[type=number] { width: 90px; }
   button { cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: 0.4; cursor: default; }
   button.go { background: #2f8f4e; border-color: #2f8f4e; }
   button.stop { background: #a33a3a; border-color: #a33a3a; }
   .topbtn { position: fixed; right: 16px; bottom: 16px; }
@@ -73,6 +82,15 @@
   </header>
 
   <div class="banner pixel" id="banner"></div>
+  <section class="howto" id="howto">
+    <p class="who pixel" id="howto-who"></p>
+    <ol>
+      <li><span class="n pixel">1</span><span>Jeder nimmt einen Chip.</span></li>
+      <li><span class="n pixel">2</span><span id="howto-2"></span></li>
+      <li><span class="n pixel">3</span><span>Erobert so viele Stationen wie möglich: Chip dranhalten!</span></li>
+    </ol>
+    <p class="fine" id="howto-fine"></p>
+  </section>
   <section class="teams" id="teams"></section>
   <section class="stations" id="stations"></section>
 
@@ -124,6 +142,24 @@ $("sound").onclick = () => {
   if (soundOn) say("Ton ist an");
 };
 
+// ---- Anleitung (wenn kein Spiel laeuft) ------------------------------------------------------------------------
+const ZU = ["", "allein", "zu zweit", "zu dritt", "zu viert", "zu fünft", "zu sechst", "zu siebt", "zu acht", "zu neunt",
+            "zu zehnt", "zu elft", "zu zwölft"];
+function howto(s) {
+  // gleich viele pro Team: Vielfache der Teamzahl bis zur vollen Besetzung
+  const n = [];
+  for (let k = s.n_teams; k <= s.n_teams * s.max_team; k += s.n_teams) n.push(ZU[k] || `zu ${k}`);
+  const better = n.slice(1);
+  const or = better.length > 1 ? better.slice(0, -1).join(", ") + " oder " + better[better.length - 1] : better[0];
+  $("howto-who").textContent = `Ihr müsst mindestens ${n[0]} sein` + (or ? `, besser ${or}.` : ".");
+  const names = s.teams.map((t) => t.team.toLowerCase());
+  const teams = names.length > 1 ? names.slice(0, -1).join(", ") + " oder " + names[names.length - 1] : names[0];
+  $("howto-2").textContent = `Lauft zu den Stationen und haltet den Chip dran – ihr seht, ob ihr ${teams} seid.`;
+  $("howto-fine").textContent = `Sobald alle Stationen eine Farbe haben, gibt es Punkte. Hält ein Team alle, zählt es doppelt. `
+    + `Nach einer Eroberung ist die Station ${s.cooldown} Sekunden gesperrt.`
+    + (s.phase === "lobby" && s.autostart ? " Der erste Chip an einer Station startet das Spiel." : "");
+}
+
 // ---- Anzeige ---------------------------------------------------------------------------------------------------
 function fmt(sec) {
   sec = Math.ceil(sec);
@@ -134,6 +170,9 @@ function render(s) {
   const lobby = s.autostart ? "Bereit – die erste Karte an einer Station startet das Spiel" : PHASE.lobby;
   $("phase").textContent = s.phase === "lobby" ? `${lobby} (${s.cards} Karten, max. ${s.max_team} pro Team)` : PHASE[s.phase];
   $("clock").textContent = fmt(s.remaining);
+  $("howto").classList.toggle("show", s.phase !== "running");
+  if (s.phase !== "running") howto(s);
+  document.querySelector('button[data-action="start"]').disabled = s.phase === "running";
   $("clock").classList.toggle("low", s.phase === "running" && s.remaining <= 60);
 
   // Countdown-Ansagen

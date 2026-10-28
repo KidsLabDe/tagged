@@ -33,15 +33,16 @@ BOSS_R = 4.0 if INSERTS else 3.5
 # Bauteile
 RC522 = (40.0, 60.0, 1.6)
 RC522_CY = 100.0
-# ESP32-C6 Super Mini, USB-C an der unteren Wand. Akku-Pads liegen auf der Unterseite: Das Board liegt deshalb
-# auf zwei Stegen C6_LIFT ueber dem Boden, darunter ein Kabelkanal mit Ausgang Richtung Akku.
-C6 = (18.0, 22.5, 1.2)  # Breite x, Laenge y, Dicke
-C6_LIFT = 3.0
-# 18650 quer in einem Flexbatter-Halter (gedruckte Feder am Minuspol, Kontakte = Drahtwindungen durch die Schlitze),
-# im Boden versenkt. Original fuer 18650: l=65.5, hf=0.75 -> 79 mm lang, passt nicht zwischen die LEDs.
-# Hier kuerzer (mehr Vorspannung der Feder) und niedriger (Feder bleibt unter den LEDs). Nur ungeschuetzte Zellen.
-BATT_L, BATT_D, BATT_HF = 64.0, 18.4, 0.6  # Flexbatter-Parameter l, d, hf
-BATT_CY = 40.0
+# ESP32-C6 Super Mini, USB-C mittig an der unteren Wand, ohne Halter (wird eingeklebt). Die Akku-Pads liegen unten,
+# das Board sitzt also je nach Kabeln etwas ueber dem Boden: die USB-Oeffnung ist dafuer hoch genug.
+C6 = (18.5, 26.0, 1.2)  # Breite x, Laenge y, Dicke (nachgemessen)
+C6_LIFT = 2.0  # nur fuer das Platzhalter-Bauteil
+USB_SLOT = (11.0, FLOOR + 0.5, 10.6)  # Breite, z von, z bis (unter der LED-Nut)
+# 18650 quer, Kabel direkt an die Zelle geloetet: nur zwei Klammern (ca. 240 Grad, oben offen), Zelle wird eingeklipst
+BATT_L, BATT_D = 65.0, 18.4
+BATT_CLIPS = (-20.0, 20.0)  # x der Klammern
+CLIP_W, CLIP_T, CLIP_OPEN = 8.0, 2.0, 120.0  # Breite, Wandstaerke, Oeffnungswinkel oben (Grad)
+BATT_CY = 44.0
 # KCD1-Wippschalter in der Rueckwand, in einer Mulde versenkt, damit er beim Aufhaengen nicht aufliegt
 KCD1_CUT = (13.0, 19.2)  # Einbauoeffnung x, y
 KCD1_BEZEL = (15.0, 21.0)  # Rahmen aussen
@@ -148,100 +149,21 @@ def logo_solid(station):
     return logo
 
 
-# --- Flexbatter -----------------------------------------------------------------------------------------------
-# Portiert aus flexbatter.scad von Heinz Spiess (2014, CC BY-SA, https://www.thingiverse.com/thing:456900),
-# n=1, ohne Schraubloecher und ohne Kanaele in der Unterseite (die liegt hier auf dem Gehaeuseboden).
-FB_EW = 0.56
-FB_W, FB_WS = 4 * FB_EW, 2 * FB_EW  # Wand, Federwand
-FB_CH = FB_W - FB_WS
-
-
-def fb_arc(r1, r2, h, a):
-    """Ringsektor von 180 bis 180+a Grad (wie arc(r1, r2, a1=a, a2=0) im Original)."""
-    s = Part.makeCylinder(r2, h, App.Vector(0, 0, 0), App.Vector(0, 0, 1), a).cut(cyl(r1, h + 2, 0, 0, -1))
-    s.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), 180)
-    return s
-
-
-def fb_sline(angle, radius, i, w, h):
-    """Schlangenlinie aus Boegen (angle != 0) und Geraden (angle == 0, Laenge radius), wie sline() im Original."""
-    a, r = angle[i], abs(radius[i])
-    parts = [box(-w / 2, -r - 0.01, 0, w, 0.02, h)]
-    if a:
-        parts.append(fb_arc(r - w / 2, r + w / 2, h, abs(a)))
-    elif r > 0:
-        parts.append(box(-w / 2, -r, 0, w, r, h))
-    if i + 1 < len(angle):
-        sub = fb_sline(angle, radius, i + 1, w, h)
-        sub.translate(App.Vector(-r, 0, 0) if a else App.Vector(0, -r, 0))
-        sub.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), a)
-        parts.append(sub)
-    s = parts[0].fuse(parts[1:])
-    if a:
-        s.translate(App.Vector(r, 0, 0))
-    if a < 0:
-        s = s.mirror(App.Vector(0, 0, 0), App.Vector(1, 0, 0))
-    return s
-
-
-def flexbatter(l, d, hf, el=0.0, eps=0.28):
-    """Halter in eigenen Koordinaten: Akku entlang x, Minuspol (Feder) bei x=0, Pluspol bei x=l, Unterseite z=0."""
-    w, ws, ch = FB_W, FB_WS, FB_CH
-    r = d / 5 + 2 * ws
-    hb = hf * d + w + ch
-    body = box(0, -w - d / 2, 0, l + w, d + 2 * w, hb)
-    body = body.makeChamfer(ch, [e for e in body.Edges if e.BoundBox.ZMax > 1e-6])
-    body = body.cut([box(-2, -d / 2, w, 2 + l, d, d + 1), box(-1, -d / 2, -1, 2, d, d + w + 2),
-                     Part.makeCylinder(d / 2 + eps, l + 1, App.Vector(-1, 0, d / 2 + w), App.Vector(1, 0, 0))])
-    D = d + 2 * w - 2 * ws - 0.7
-    springs = []
-    for sy in (1, -1):
-        sp = fb_sline([0, 180, 0, 180, 0, -180, 0, 90, 0],
-                      [r + ch + el, D / 4, el, D / 12, el / 2, D / 12, 1 + el / 2, D / 5, D / 3], 0, ws, hf * d + w)
-        sp.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), -90)
-        sp.translate(App.Vector(ch, d / 2 + w - ws / 2, 0))
-        springs.append(sp if sy > 0 else sp.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0)))
-    h = body.fuse(springs)
-    cut = []
-    # Schlitze fuer die Kontaktwindungen (Plus- und Minuspol)
-    for z in (-2 * ws, 2 * ws):
-        cut.append(box(-2 * ws, -w, w - ws / 2 + d / 2 + z, l + 2 * w + 2, 2 * w, ws))
-    # Durchgaenge fuer Draehte unten in den Seitenwaenden und an der Plus-Stirnwand
-    for sy in (1, -1):
-        for c in [box(l - 1, -d / 2, w, w + 2, 2, 2)] + [box(x, -d / 2 - w - ws - 1, w, 3, w + ws + 3, 2) for x in (3, l - 7)]:
-            cut.append(c if sy < 0 else c.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0)))
-    # Gravur: Akku-Symbol, Plus und Minus
-    eh = 0.25
-    for cx, cy, dx, dy in ((w + l / 2, d / 4 + 1, l / 5, d / 4.5), (w + l / 2 + l / 10, d / 4 + 1, d / 7, d / 10),
-                           (w + l / 2 + l / 5, d / 4 + 1, 1, d / 4), (w + l / 2 + l / 5, d / 4 + 1, d / 4, 1),
-                           (w + l / 2 - l / 5, d / 4 + 1, 1, d / 4)):
-        cut.append(box(cx - dx / 2, cy - dy / 2, w - 2 * eh, dx, dy, 4 * eh))
-    h = h.cut(cut)
-    # Kontaktbuckel quer an beiden Polen
-    bulges = []
-    for x in (-0.3, l):
-        bulges += [Part.makeCylinder(ws, 6, App.Vector(x, -3, w + d / 2), App.Vector(0, 1, 0)),
-                   Part.makeSphere(ws, App.Vector(x, -3, w + d / 2)), Part.makeSphere(ws, App.Vector(x, 3, w + d / 2))]
-    return h.fuse(bulges).removeSplitter()
-
-
-_HOLDER = {}
-
-
-def holder_x_range():
-    """Halter so verschieben, dass er inklusive Feder mittig liegt: Rueckgabe (x des Minuspols, Gesamtlaenge)."""
-    key = (BATT_L, BATT_D, BATT_HF)
-    if key not in _HOLDER:
-        _HOLDER[key] = flexbatter(*key)
-    bb = _HOLDER[key].BoundBox
-    return -(bb.XMin + bb.XMax) / 2, bb.XLength
-
-
-def battery_holder():
-    x0, _ = holder_x_range()
-    h = _HOLDER[(BATT_L, BATT_D, BATT_HF)].copy()
-    h.translate(App.Vector(x0, BATT_CY, 0))  # Unterseite auf der Rueckseite, Boden des Halters ersetzt den Gehaeuseboden
-    return h
+def battery_clip(x):
+    """Klammer um die liegende Zelle: Ring mit Fuss bis zum Boden, oben CLIP_OPEN Grad offen zum Einklipsen."""
+    import math
+    zc = FLOOR + BATT_D / 2
+    ri, ro = BATT_D / 2 + 0.15, BATT_D / 2 + 0.15 + CLIP_T
+    ax = App.Vector(1, 0, 0)
+    ring = Part.makeCylinder(ro, CLIP_W, App.Vector(x - CLIP_W / 2, BATT_CY, zc), ax)
+    foot = box(x - CLIP_W / 2, BATT_CY - ro, FLOOR, CLIP_W, 2 * ro, zc - FLOOR)
+    cell = Part.makeCylinder(ri, CLIP_W + 2, App.Vector(x - CLIP_W / 2 - 1, BATT_CY, zc), ax)
+    a, R = math.radians(CLIP_OPEN / 2), 3 * ro
+    pts = [(0, 0), (R * math.sin(a), R * math.cos(a)), (R * math.sin(a), R), (-R * math.sin(a), R),
+           (-R * math.sin(a), R * math.cos(a)), (0, 0)]
+    wedge = Part.Face(Part.makePolygon([App.Vector(x - CLIP_W, BATT_CY + py, zc + pz) for py, pz in pts]))
+    below = box(x - CLIP_W, BATT_CY - 2 * ro, -5, 2 * CLIP_W, 4 * ro, 5)  # Ring nicht hinten herausragen lassen
+    return ring.fuse(foot).cut([cell, below, wedge.extrude(App.Vector(2 * CLIP_W, 0, 0))]).removeSplitter()
 
 
 def make_base():
@@ -254,17 +176,9 @@ def make_base():
     base = outer.cut(inner).cut(led).cut(led_chamfer)
 
     add = []
-    # Board-Rahmen fuer den C6 Super Mini (3 Seiten, offen zur USB-Wand), Board liegt auf zwei Stegen
-    bw, bl, bt = C6
-    x0, g, t = -bw / 2, CLR, 1.2
-    hf = C6_LIFT + bt + 1.0
-    add += [box(x0 - g - t, 0, FLOOR, t, bl + g + t, hf),
-            box(x0 + bw + g, 0, FLOOR, t, bl + g + t, hf),
-            box(x0 - g - t, bl + g, FLOOR, bw + 2 * g + 2 * t, t, hf),
-            box(x0 - g, 0, FLOOR, bw + 2 * g, 2.0, C6_LIFT),
-            box(x0 - g, bl - 2.0, FLOOR, bw + 2 * g, 2.0 + g, C6_LIFT)]
-    # 18650-Halter
-    add.append(battery_holder())
+    # 18650-Klammern
+    for x in BATT_CLIPS:
+        add.append(battery_clip(x))
     # Mulde mit Platte fuer den KCD1 (Rueckwand lokal verstaerkt)
     kx, ky = KCD1_POS
     ex, ey = KCD1_BEZEL
@@ -286,11 +200,9 @@ def make_base():
     base = base.fuse(add)
 
     cut = []
-    # USB-C-Oeffnung in der unteren Wand
-    zc = FLOOR + C6_LIFT + bt + 1.6
-    cut.append(box(-5.5, -WALL - 1, zc - 2.75, 11, WALL + 1.5, 5.5))
-    # Kabelkanal unter dem Board Richtung Akku
-    cut.append(box(-4.0, bl - 3.0, FLOOR, 8.0, g + t + 4.0, C6_LIFT))
+    # USB-C-Oeffnung in der unteren Wand, hoch genug fuer ein eingeklebtes Board
+    uw, uz0, uz1 = USB_SLOT
+    cut.append(box(-uw / 2, -WALL - 1, uz0, uw, WALL + 1.5, uz1 - uz0))
     # KCD1: Mulde von hinten und Einbauoeffnung
     cut.append(box(kx - ex / 2 - 0.5, ky - ey / 2 - 0.5, -1, ex + 1, ey + 1, KCD1_WELL + 1))
     cx_, cy_ = KCD1_CUT
@@ -330,9 +242,8 @@ def make_dummies():
     bw, bl, bt = C6
     d["C6SuperMini"] = box(-bw / 2, 0, FLOOR + C6_LIFT, bw, bl, bt).fuse(
         box(-4.5, -0.5, FLOOR + C6_LIFT + bt, 9, 7.5, 3.2))
-    # Zelle zwischen den Kontaktbuckeln (die echte Zelle drueckt die Feder um ca. 2-3 mm zusammen)
-    x0, _ = holder_x_range()
-    d["Akku18650"] = Part.makeCylinder(BATT_D / 2, BATT_L - 2.3, App.Vector(x0 + 1.0, BATT_CY, 2.24 + BATT_D / 2),
+    # Zelle liegt auf dem Boden, in den Klammern
+    d["Akku18650"] = Part.makeCylinder(BATT_D / 2, BATT_L, App.Vector(-BATT_L / 2, BATT_CY, FLOOR + BATT_D / 2),
                                        App.Vector(1, 0, 0))
     kx, ky = KCD1_POS
     d["Schalter"] = box(kx - KCD1_BEZEL[0] / 2, ky - KCD1_BEZEL[1] / 2, KCD1_WELL - 2.0, KCD1_BEZEL[0], KCD1_BEZEL[1],
