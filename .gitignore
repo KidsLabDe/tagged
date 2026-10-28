@@ -3,3 +3,4 @@
 __pycache__/
 circuitpython/karten-log.txt
 specs/
+circuitpython/settings.toml

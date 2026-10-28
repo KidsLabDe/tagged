@@ -1,32 +1,57 @@
-# Tagged! auf dem Lolin S2 Mini: rundlaufende Animation auf dem LED-Ring, Karte erkannt -> 5x rot atmen
+# Tagged!-Spielstation: Regenbogen beim Start, dann zeigt der LED-Ring den Zustand vom Server.
+# Karte an den Leser -> Scan an den Server, die Antwort wird als Animation gezeigt.
+# Laeuft auf dem Lolin S2 Mini und dem ESP32-C6 Super Mini. Einstellungen in settings.toml (siehe README).
 import math
+import os
 import time
-import board
 import busio
 import digitalio
+import microcontroller
 import neopixel_write
+from net import Net
 from rc522 import RC522
 
-# Lolin S2 Mini -> RC522 (Standard-SPI-Pins des Boards)
-PIN_SDA = board.IO12  # SDA = Chip Select
-PIN_SCK = board.IO7
-PIN_MOSI = board.IO11
-PIN_MISO = board.IO9
-PIN_RST = board.IO5
+# ---- Einstellungen: Standardwerte, settings.toml hat Vorrang --------------------------------------------------
+BOARD = os.getenv("TAGGED_BOARD", "s2mini")  # "s2mini" (Lolin S2 Mini) oder "c6" (ESP32-C6 Super Mini)
+BOX_ID = int(os.getenv("TAGGED_BOX_ID", 1))  # Nummer der Box (1-5), passend zur Ziffer auf dem Deckel
+SERVER = os.getenv("TAGGED_SERVER", "fangulus.kidslab.de")  # Host, optional mit :Port
+TOKEN = os.getenv("TAGGED_TOKEN", "")
+# --------------------------------------------------------------------------------------------------------------
 
-PIN_LEDS = board.IO40
+# RC522 (SDA = Chip Select) und LED-Streifen je Board, als GPIO-Nummer
+PINS = {
+    "s2mini": {"sda": 12, "sck": 7, "mosi": 11, "miso": 9, "rst": 5, "leds": 40},  # Standard-SPI-Pins des S2 Mini
+    "c6": {"sda": 0, "sck": 1, "mosi": 2, "miso": 3, "rst": 4, "leds": 14},  # linke Leiste, LEDs rechts
+}
+CHIP = {"s2mini": "ESP32S2", "c6": "ESP32C6"}
+
+
+def gpio(name):
+    return getattr(microcontroller.pin, "GPIO%d" % PINS[BOARD][name])
+
+
+if BOARD not in PINS:
+    raise ValueError("TAGGED_BOARD muss 's2mini' oder 'c6' sein, nicht %r" % BOARD)
+if CHIP[BOARD] not in os.uname().machine.replace("-", "").upper():
+    print("!!! TAGGED_BOARD = %r passt nicht zum Chip: %s" % (BOARD, os.uname().machine))
+print("Tagged! Box %d auf %s, Server %s" % (BOX_ID, BOARD, SERVER))
+
 NUM_LEDS = 25
 BRIGHTNESS = 0.25  # 25 LEDs voll weiss waeren ~1.5 A, das schont Akku und Augen
 
 SPIN_TIME = 1.6  # Sekunden pro Umlauf
 TAIL = 10  # Laenge des Schweifs in LEDs
-HUE_TIME = 20.0  # Sekunden fuer einmal durch den Farbkreis
-BREATHS = 5
-BREATH_TIME = 0.6  # Sekunden pro Atemzug
+RAINBOW_TIME = 3.0  # Sekunden Regenbogen beim Start
+RAINBOW_SPIN = 1.5  # Sekunden pro Umlauf des Regenbogens
 CARD_GONE = 1.0  # so lange muss die Karte weg sein, bevor sie wieder ausloest
 POLL_EVERY = 0.1  # Sekunden zwischen zwei Abfragen des Lesers
+SERVER_EVERY = 2.0  # Sekunden zwischen zwei Abfragen des Servers
+OFFLINE_AFTER = 3  # so viele Fehlversuche, bevor die Station "offline" zeigt
 
-pin = digitalio.DigitalInOut(PIN_LEDS)
+WHITE = (200, 200, 200)
+ORANGE = (255, 80, 0)
+
+pin = digitalio.DigitalInOut(gpio("leds"))
 pin.switch_to_output()
 buf = bytearray(NUM_LEDS * 3)
 
@@ -47,6 +72,10 @@ def fill(r, g, b):
     show()
 
 
+def scaled(c, k):
+    return c[0] * k, c[1] * k, c[2] * k
+
+
 def hue(h):
     """h in 0..1 -> (r, g, b) mit voller Saettigung"""
     h = (h % 1.0) * 6
@@ -54,36 +83,119 @@ def hue(h):
     return ((255, x, 0), (x, 255, 0), (0, 255, x), (0, x, 255), (x, 0, 255), (255, 0, x))[int(h)]
 
 
-def spin_frame(t):
-    head = (t / SPIN_TIME % 1.0) * NUM_LEDS
-    r, g, b = hue(t / HUE_TIME)
+def breath(t, period):
+    """0..1..0 weich, quadratisch wirkt fuers Auge gleichmaessiger"""
+    k = (1 - math.cos(2 * math.pi * t / period)) / 2
+    return k * k
+
+
+# ---- Daueranzeigen (ein Bild pro Aufruf) ----------------------------------------------------------------------
+def spin_frame(t, color, spin=SPIN_TIME, gain=1.0):
+    head = (t / spin % 1.0) * NUM_LEDS
     for i in range(NUM_LEDS):
         d = (head - i) % NUM_LEDS  # Abstand hinter dem Kopf
         if d < TAIL:
-            k = (1 - d / TAIL) ** 2
-            set_led(i, r * k, g * k, b * k)
+            set_led(i, *scaled(color, gain * (1 - d / TAIL) ** 2))
         else:
             set_led(i, 0, 0, 0)
     show()
 
 
-def breathe_red():
+def offline_frame(t):
+    """Kein Server: erste LED blinkt orange."""
+    for i in range(NUM_LEDS):
+        set_led(i, 0, 0, 0)
+    if t % 1.0 < 0.5:
+        set_led(0, *ORANGE)
+    show()
+
+
+def frame(t, st):
+    """Zeigt den Zustand vom Server: st ist die Antwort von /api/station oder None."""
+    if st is None:
+        spin_frame(t, WHITE, gain=0.3)  # verbinde noch
+    elif st["phase"] == "lobby":
+        fill(*scaled(WHITE, 0.1 + 0.4 * breath(t, 3.0)))
+    elif st["phase"] == "over":
+        fill(*(st["winner"] or WHITE))
+    elif st["domination"]:
+        fill(*scaled(st["owner"], 0.2 + 0.8 * breath(t, 0.5)))
+    elif st["owner"] is None:
+        spin_frame(t, WHITE)
+    elif st["lock_left"] > 0:
+        spin_frame(t, st["owner"], spin=SPIN_TIME * 2, gain=0.5)
+    else:
+        spin_frame(t, st["owner"])
+
+
+# ---- Kurze Animationen als Antwort auf einen Scan --------------------------------------------------------------
+def blink(color, n, period=0.6):
     start = time.monotonic()
     while True:
         t = time.monotonic() - start
-        if t >= BREATHS * BREATH_TIME:
+        if t >= n * period:
             break
-        k = (1 - math.cos(2 * math.pi * t / BREATH_TIME)) / 2
-        fill(255 * k * k, 0, 0)  # quadratisch wirkt fuers Auge gleichmaessiger
+        fill(*scaled(color, breath(t, period)))
     fill(0, 0, 0)
+
+
+def wave(color, duration=0.7):
+    """Farbe laeuft einmal rundherum, dann einmal hell aufblitzen."""
+    for i in range(NUM_LEDS):
+        set_led(i, *color)
+        show()
+        time.sleep(duration / NUM_LEDS)
+    blink(color, 1, 0.5)
+
+
+def flicker(color, n=6):
+    for _ in range(n):
+        fill(*scaled(color, 0.6))
+        time.sleep(0.05)
+        fill(0, 0, 0)
+        time.sleep(0.07)
+
+
+def rainbow():
+    """Regenbogen ueber den ganzen Ring, dreht sich RAINBOW_TIME lang und blendet am Ende aus."""
+    start = time.monotonic()
+    while True:
+        t = time.monotonic() - start
+        if t >= RAINBOW_TIME:
+            break
+        k = min(1.0, (RAINBOW_TIME - t) / 0.5)  # letzte halbe Sekunde ausblenden
+        for i in range(NUM_LEDS):
+            set_led(i, *scaled(hue(i / NUM_LEDS + t / RAINBOW_SPIN), k))
+        show()
+    fill(0, 0, 0)
+
+
+def react(res):
+    """Animation zur Antwort von /api/scan."""
+    r = res["result"]
+    color = res.get("color") or WHITE
+    if r == "assigned":  # neue Karte: "du bist rot"
+        blink(color, 3)
+        if res.get("captured"):
+            wave(color)
+    elif r == "captured":
+        wave(color)
+    elif r in ("own", "team"):
+        blink(color, 1)
+    elif r == "locked":
+        flicker(color)
+    elif r == "full":
+        blink(WHITE, 2)
 
 
 def hexs(data):
     return "".join("%02X" % b for b in data)
 
 
-spi = busio.SPI(PIN_SCK, MOSI=PIN_MOSI, MISO=PIN_MISO)
-rfid = RC522(spi, PIN_SDA, PIN_RST)
+rainbow()
+
+spi = busio.SPI(gpio("sck"), MOSI=gpio("mosi"), MISO=gpio("miso"))
+rfid = RC522(spi, gpio("sda"), gpio("rst"))
 v = rfid.version()
 print("RC522 Version: 0x%02X" % v)
 if v in (0x00, 0xFF):
@@ -95,6 +207,10 @@ if v in (0x00, 0xFF):
         fill(0, 0, 0)
         time.sleep(0.5)
 
+net = Net(SERVER, TOKEN)
+state = None
+fails = 0
+next_server = 0
 print("Bereit. Karte an den Leser halten...")
 last_uid = None
 last_seen = 0
@@ -102,7 +218,23 @@ next_poll = 0
 
 while True:
     now = time.monotonic()
-    spin_frame(now)
+    if fails >= OFFLINE_AFTER:
+        offline_frame(now)
+    else:
+        frame(now, state)
+
+    if now >= next_server:
+        next_server = now + SERVER_EVERY
+        try:
+            state = net.get("/api/station", box=BOX_ID)
+            if fails >= OFFLINE_AFTER:
+                print("Server wieder erreichbar")
+            fails = 0
+        except Exception as e:
+            fails += 1
+            if fails == OFFLINE_AFTER:
+                print("!!! Server nicht erreichbar:", type(e).__name__, e)
+
     if now < next_poll:
         continue
     next_poll = now + POLL_EVERY
@@ -120,6 +252,13 @@ while True:
     rfid.halt()
     if uid != last_uid:
         print("Karte:", hexs(uid))
-        breathe_red()
+        try:
+            res = net.get("/api/scan", box=BOX_ID, uid=hexs(uid))
+            print("Server:", res)
+            react(res)
+        except Exception as e:
+            print("!!! Scan nicht gesendet:", type(e).__name__, e)
+            blink(ORANGE, 2)
+        next_server = 0  # Zustand gleich neu holen
         last_uid = uid
     last_seen = time.monotonic()
