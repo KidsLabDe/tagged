@@ -5,7 +5,7 @@ import os
 import FreeCAD as App
 import Part
 
-OUT_DIR = "/home/kingbbq/src/polygen-nachbau/freecad"
+OUT_DIR = "/home/kingbbq/src/tagged/freecad"
 FONT = "/usr/share/fonts/tex-gyre/texgyreadventor-bold.otf"
 
 TEXT_MAIN = "DISC"
