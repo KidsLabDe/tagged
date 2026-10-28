@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FANGULUS – Tagged!</title>
+<style>
+  @font-face { font-family: "Pixelify"; src: url("PixelifySans-Bold.ttf") format("truetype"); }
+  :root { --bg: #14111c; --panel: #1f1a2b; --line: #3a3150; --text: #f2eefa; --muted: #9c93b3; --neutral: #4a4360; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 18px/1.4 system-ui, sans-serif; }
+  .pixel { font-family: "Pixelify", monospace; letter-spacing: 0.04em; }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 40px; display: grid; gap: 20px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 56px; line-height: 1; }
+  header .phase { color: var(--muted); font-size: 20px; margin-top: 6px; }
+  .clock { font-size: 96px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock.low { color: #ff5a5a; animation: blink 1s steps(2) infinite; }
+
+  .banner { border-radius: 14px; padding: 14px 20px; font-size: 28px; text-align: center; display: none; }
+  .banner.show { display: block; }
+  .banner.dom { animation: pulse 0.8s ease-in-out infinite alternate; }
+
+  .teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .team { background: var(--panel); border-radius: 14px; padding: 14px 18px; border-left: 12px solid; display: flex; justify-content: space-between; align-items: center; }
+  .team .name { font-size: 28px; }
+  .team .members { color: var(--muted); font-size: 16px; }
+  .team .score { font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+
+  .stations { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .station { aspect-ratio: 3 / 4; border-radius: 22px; background: var(--neutral); display: flex; flex-direction: column;
+             align-items: center; justify-content: center; position: relative; transition: background 0.4s; border: 4px solid transparent; }
+  .station .nr { font-size: clamp(64px, 11vw, 140px); line-height: 1; text-shadow: 0 4px 0 rgba(0,0,0,0.25); }
+  .station .info { font-size: 18px; min-height: 1.4em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .station.offline { opacity: 0.35; border: 4px dashed var(--muted); }
+  .station.flash { animation: flash 0.6s ease-out 2; }
+  .station.dom { animation: pulse 0.8s ease-in-out infinite alternate; }
+
+  .events { background: var(--panel); border-radius: 14px; padding: 12px 18px; }
+  .events h2, details summary { font-size: 16px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+  .events ul { list-style: none; margin: 0; padding: 0; }
+  .events li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .events li:last-child { border: 0; }
+  .events time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 10px; }
+
+  details { background: var(--panel); border-radius: 14px; padding: 12px 18px; }
+  details summary { cursor: pointer; margin: 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; margin-top: 12px; }
+  .controls label { display: grid; gap: 4px; color: var(--muted); font-size: 15px; }
+  input, select, button { font: inherit; color: var(--text); background: var(--bg); border: 2px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+  input[type=number] { width: 90px; }
+  button { cursor: pointer; font-weight: 600; }
+  button.go { background: #2f8f4e; border-color: #2f8f4e; }
+  button.stop { background: #a33a3a; border-color: #a33a3a; }
+  .topbtn { position: fixed; right: 16px; bottom: 16px; }
+  .err { color: #ff8080; }
+
+  @keyframes pulse { from { filter: brightness(0.8); } to { filter: brightness(1.3); } }
+  @keyframes flash { 0% { filter: brightness(2.2); transform: scale(1.04); } 100% { filter: none; transform: none; } }
+  @keyframes blink { 50% { opacity: 0.35; } }
+  @media (max-width: 800px) { .stations { grid-template-columns: repeat(3, 1fr); } .clock { font-size: 64px; } header h1 { font-size: 40px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1 class="pixel">FANGULUS</h1>
+      <div class="phase" id="phase">Verbinde…</div>
+    </div>
+    <div class="clock pixel" id="clock">--:--</div>
+  </header>
+
+  <div class="banner pixel" id="banner"></div>
+  <section class="teams" id="teams"></section>
+  <section class="stations" id="stations"></section>
+
+  <section class="events">
+    <h2>Was passiert ist</h2>
+    <ul id="events"></ul>
+  </section>
+
+  <details>
+    <summary>Spielleitung</summary>
+    <div class="controls">
+      <label>Laufzeit
+        <select id="duration">
+          <option value="300">5 Minuten</option><option value="600">10 Minuten</option>
+          <option value="900">15 Minuten</option><option value="1200">20 Minuten</option>
+        </select>
+      </label>
+      <label>Sperrzeit (s)<input id="cooldown" type="number" min="0" max="300"></label>
+      <label>Teams<select id="nteams"><option>2</option><option>3</option><option>4</option></select></label>
+      <label>Passwort<input id="admin" type="password" placeholder="Spielleitung"></label>
+      <button class="go" data-action="start">Start</button>
+      <button class="stop" data-action="stop">Stop</button>
+      <button data-action="reset">Neues Spiel</button>
+      <span class="err" id="ctlerr"></span>
+    </div>
+  </details>
+</main>
+<button class="topbtn" id="sound">🔇 Ton an</button>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const PHASE = { lobby: "Warten auf Start – Karten jetzt an eine Station halten", running: "Spiel läuft", over: "Spiel vorbei" };
+let lastEvent = null, owners = [], soundOn = false, said = new Set(), formFilled = false;
+
+// ---- Sprachausgabe ---------------------------------------------------------------------------------------------
+function say(text) {
+  if (!soundOn || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "de-DE";
+  const v = speechSynthesis.getVoices().find((v) => v.lang.startsWith("de"));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+$("sound").onclick = () => {
+  soundOn = !soundOn;
+  $("sound").textContent = soundOn ? "🔊 Ton aus" : "🔇 Ton an";
+  if (soundOn) say("Ton ist an");
+};
+
+// ---- Anzeige ---------------------------------------------------------------------------------------------------
+function fmt(sec) {
+  sec = Math.ceil(sec);
+  return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+}
+
+function render(s) {
+  $("phase").textContent = PHASE[s.phase] + (s.phase === "lobby" ? ` (${s.cards} Karten, max. ${s.max_team} pro Team)` : "");
+  $("clock").textContent = fmt(s.remaining);
+  $("clock").classList.toggle("low", s.phase === "running" && s.remaining <= 60);
+
+  // Countdown-Ansagen
+  if (s.phase === "running") {
+    for (const [at, text] of [[300, "Noch fünf Minuten"], [120, "Noch zwei Minuten"], [60, "Noch eine Minute"], [10, "Noch zehn Sekunden"]]) {
+      if (s.remaining <= at && s.remaining > at - 5 && !said.has(at) && s.duration > at) { said.add(at); say(text); }
+    }
+  } else said.clear();
+
+  const banner = $("banner");
+  banner.className = "banner pixel";
+  if (s.phase === "running" && s.domination !== null) {
+    const t = s.teams[s.domination];
+    banner.textContent = `Team ${t.team} hält alle Stationen – doppelte Punkte!`;
+    banner.style.background = rgb(t.color, 0.85);
+    banner.classList.add("show", "dom");
+  } else if (s.phase === "running" && s.all_claimed) {
+    banner.textContent = "Alle Stationen erobert – die Punkte zählen!";
+    banner.style.background = "#3a3150";
+    banner.classList.add("show");
+  } else if (s.phase === "running") {
+    banner.textContent = "Erobert alle Stationen – erst dann zählen die Punkte";
+    banner.style.background = "#2a2438";
+    banner.classList.add("show");
+  } else if (s.phase === "over") {
+    const w = s.winner !== null ? s.teams[s.winner] : null;
+    banner.textContent = w ? `Team ${w.team} gewinnt!` : "Unentschieden!";
+    banner.style.background = w ? rgb(w.color, 0.85) : "#3a3150";
+    banner.classList.add("show");
+  }
+
+  $("teams").innerHTML = s.teams.map((t) => `
+    <div class="team" style="border-color:${rgb(t.color)}">
+      <div><div class="name pixel">${t.team}</div><div class="members">${t.members} / ${s.max_team} Spieler</div></div>
+      <div class="score pixel">${t.score}</div>
+    </div>`).join("");
+
+  const st = $("stations");
+  if (st.children.length !== s.stations.length) {
+    st.innerHTML = s.stations.map((x) => `<div class="station"><div class="nr pixel">${x.box}</div><div class="info"></div></div>`).join("");
+  }
+  s.stations.forEach((x, i) => {
+    const el = st.children[i];
+    const t = x.owner !== null ? s.teams[x.owner] : null;
+    el.style.background = t ? rgb(t.color, 0.9) : "";
+    el.classList.toggle("offline", !x.online);
+    el.classList.toggle("dom", s.phase === "running" && s.domination !== null);
+    let info = !x.online ? "offline" : t ? t.team : "neutral";
+    if (x.online && x.lock_left > 0 && s.phase === "running") info += ` · gesperrt ${Math.ceil(x.lock_left)} s`;
+    el.querySelector(".info").textContent = info;
+    if (owners.length && owners[i] !== x.owner && x.owner !== null) {
+      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    }
+  });
+  owners = s.stations.map((x) => x.owner);
+
+  // neue Ereignisse ansagen (beim ersten Laden nur merken)
+  const newest = s.events.length ? s.events[s.events.length - 1].id : 0;
+  if (lastEvent !== null) s.events.filter((e) => e.id > lastEvent).forEach((e) => say(e.text));
+  lastEvent = newest;
+  $("events").innerHTML = s.events.slice(-8).reverse().map((e) =>
+    `<li><time>${new Date(e.t * 1000).toLocaleTimeString("de-DE")}</time>${e.text}</li>`).join("");
+
+  if (!formFilled) {
+    $("duration").value = s.duration;
+    if (!$("duration").value) { $("duration").add(new Option(`${s.duration / 60} Minuten`, s.duration)); $("duration").value = s.duration; }
+    $("cooldown").value = s.cooldown;
+    $("nteams").value = s.n_teams;
+    formFilled = true;
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch("api/state", { cache: "no-store" });
+    render(await r.json());
+  } catch (e) {
+    $("phase").textContent = "Keine Verbindung zum Server…";
+  }
+  setTimeout(poll, 1000);
+}
+
+// ---- Spielleitung ----------------------------------------------------------------------------------------------
+$("admin").value = localStorage.getItem("tagged-admin") || "";
+document.querySelectorAll("button[data-action]").forEach((b) => b.onclick = async () => {
+  const action = b.dataset.action;
+  if (action === "reset" && !confirm("Neues Spiel? Alle Karten werden frei, Punkte gelöscht.")) return;
+  if (action === "stop" && !confirm("Spiel jetzt beenden?")) return;
+  localStorage.setItem("tagged-admin", $("admin").value);
+  const body = { action, duration: +$("duration").value, cooldown: +$("cooldown").value };
+  if (action === "reset") body.teams = +$("nteams").value;
+  const r = await fetch("api/control", {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Admin": $("admin").value }, body: JSON.stringify(body),
+  });
+  $("ctlerr").textContent = r.ok ? "" : (r.status === 403 ? "Falsches Passwort" : "Fehler " + r.status);
+  if (r.ok) render(await r.json());
+});
+
+poll();
+</script>
+</body>
+</html>

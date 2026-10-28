@@ -1,0 +1,28 @@
+# Tagged!-Spielserver auf fangulus.kidslab.de (Traefik wie bei kidslab.de)
+# Auf dem Server liegt daneben /opt/tagged/.env mit TAGGED_TOKEN=... und TAGGED_ADMIN=...
+services:
+  tagged:
+    image: ghcr.io/kidslabde/tagged:latest
+    container_name: tagged-prod
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.services.fangulus.loadbalancer.server.port=8080"
+      # HTTP ohne Umleitung: die Stationen sprechen Klartext-HTTP
+      - "traefik.http.routers.fangulus.rule=Host(`fangulus.kidslab.de`)"
+      - "traefik.http.routers.fangulus.entryPoints=web"
+      - "traefik.http.routers.fangulus.service=fangulus"
+      # HTTPS fuer die Webansicht
+      - "traefik.http.routers.fangulus-ssl.rule=Host(`fangulus.kidslab.de`)"
+      - "traefik.http.routers.fangulus-ssl.entryPoints=websecure"
+      - "traefik.http.routers.fangulus-ssl.tls=true"
+      - "traefik.http.routers.fangulus-ssl.tls.certresolver=myresolver"
+      - "traefik.http.routers.fangulus-ssl.service=fangulus"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
