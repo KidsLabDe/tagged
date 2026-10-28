@@ -91,6 +91,7 @@
         </select>
       </label>
       <label>Sperrzeit (s)<input id="cooldown" type="number" min="0" max="300"></label>
+      <label>Autostart<span><input id="autostart" type="checkbox"> erste Karte startet</span></label>
       <label>Teams<select id="nteams"><option>2</option><option>3</option><option>4</option></select></label>
       <label>Passwort<input id="admin" type="password" placeholder="Spielleitung"></label>
       <button class="go" data-action="start">Start</button>
@@ -130,7 +131,8 @@ function fmt(sec) {
 }
 
 function render(s) {
-  $("phase").textContent = PHASE[s.phase] + (s.phase === "lobby" ? ` (${s.cards} Karten, max. ${s.max_team} pro Team)` : "");
+  const lobby = s.autostart ? "Bereit – die erste Karte an einer Station startet das Spiel" : PHASE.lobby;
+  $("phase").textContent = s.phase === "lobby" ? `${lobby} (${s.cards} Karten, max. ${s.max_team} pro Team)` : PHASE[s.phase];
   $("clock").textContent = fmt(s.remaining);
   $("clock").classList.toggle("low", s.phase === "running" && s.remaining <= 60);
 
@@ -200,6 +202,7 @@ function render(s) {
     if (!$("duration").value) { $("duration").add(new Option(`${s.duration / 60} Minuten`, s.duration)); $("duration").value = s.duration; }
     $("cooldown").value = s.cooldown;
     $("nteams").value = s.n_teams;
+    $("autostart").checked = s.autostart;
     formFilled = true;
   }
 }
@@ -216,18 +219,22 @@ async function poll() {
 
 // ---- Spielleitung ----------------------------------------------------------------------------------------------
 $("admin").value = localStorage.getItem("tagged-admin") || "";
-document.querySelectorAll("button[data-action]").forEach((b) => b.onclick = async () => {
-  const action = b.dataset.action;
-  if (action === "reset" && !confirm("Neues Spiel? Alle Karten werden frei, Punkte gelöscht.")) return;
-  if (action === "stop" && !confirm("Spiel jetzt beenden?")) return;
+async function control(body) {
   localStorage.setItem("tagged-admin", $("admin").value);
-  const body = { action, duration: +$("duration").value, cooldown: +$("cooldown").value };
-  if (action === "reset") body.teams = +$("nteams").value;
   const r = await fetch("api/control", {
     method: "POST", headers: { "Content-Type": "application/json", "X-Admin": $("admin").value }, body: JSON.stringify(body),
   });
   $("ctlerr").textContent = r.ok ? "" : (r.status === 403 ? "Falsches Passwort" : "Fehler " + r.status);
   if (r.ok) render(await r.json());
+}
+$("autostart").onchange = () => control({ autostart: $("autostart").checked });
+document.querySelectorAll("button[data-action]").forEach((b) => b.onclick = async () => {
+  const action = b.dataset.action;
+  if (action === "reset" && !confirm("Neues Spiel? Alle Karten werden frei, Punkte gelöscht.")) return;
+  if (action === "stop" && !confirm("Spiel jetzt beenden?")) return;
+  const body = { action, duration: +$("duration").value, cooldown: +$("cooldown").value, autostart: $("autostart").checked };
+  if (action === "reset") body.teams = +$("nteams").value;
+  await control(body);
 });
 
 poll();

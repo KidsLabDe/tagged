@@ -28,6 +28,7 @@ class Game:
         self.duration = 600  # Sekunden
         self.cooldown = 20  # Sperrzeit nach Eroberung
         self.n_teams = 2
+        self.autostart = True  # erster Scan in der Lobby startet das Spiel
         self.last_seen = [0.0] * STATIONS
         self.events = []
         self.event_id = 0
@@ -132,8 +133,11 @@ class Game:
         with self.lock:
             i = box - 1
             self.last_seen[i] = time.monotonic()
-            if self.phase == "over":
-                return {"result": "idle"}
+            if self.phase == "over":  # nur Rueckmeldung, Spielstand bleibt bis "Neues Spiel"
+                t = self.cards.get(uid)
+                res = self.team_info(t) if t is not None else {}
+                res["result"] = "over"
+                return res
             team = self.cards.get(uid)
             assigned = False
             if team is None:
@@ -148,6 +152,8 @@ class Game:
                 self.event("Neue Karte ist jetzt Team %s" % TEAMS[team][0], "card")
             res = self.team_info(team)
             res["captured"] = False
+            if self.phase == "lobby" and self.autostart:
+                self.start()
             if self.phase != "running":
                 res["result"] = "assigned" if assigned else "team"
                 return res
@@ -196,6 +202,7 @@ class Game:
                 "remaining": round(self.remaining(), 1),
                 "duration": self.duration,
                 "cooldown": self.cooldown,
+                "autostart": self.autostart,
                 "n_teams": self.n_teams,
                 "max_team": self.max_team,
                 "teams": [dict(self.team_info(t), score=self.scores[t], members=members[t]) for t in range(self.n_teams)],
@@ -216,6 +223,8 @@ class Game:
         with self.lock:
             if "duration" in data:
                 self.duration = max(60, min(3600, int(data["duration"])))
+            if "autostart" in data:
+                self.autostart = bool(data["autostart"])
             if "cooldown" in data:
                 self.cooldown = max(0, min(300, int(data["cooldown"])))
             action = data.get("action")

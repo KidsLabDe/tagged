@@ -40,9 +40,9 @@ RC522 und LEDs (`code.py`, Board über `TAGGED_BOARD` in `settings.toml` wählen
 | RC522 MISO | IO9 | GPIO3 |
 | RC522 RST | IO5 | GPIO4 |
 | RC522 3.3V | 3V3 | 3V3 |
-| LED-Streifen DIN (25 LEDs im Kreis) | IO40 | GPIO14 |
+| LED-Streifen DIN (25 LEDs im Kreis) | IO40 | GPIO20 |
 
-Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX, 3V3, GND und GPIO14 auf der anderen. GPIO8 (eingebaute RGB-LED), GPIO9 (BOOT) und GPIO15 (Status-LED) frei lassen. In die DIN-Leitung am besten 330 Ω, am Streifenanfang einen Elko (100–470 µF) zwischen + und GND.
+Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; auf der anderen Leiste liegen GND, 3V3 und GPIO20 (LEDs) direkt nebeneinander. GPIO8 (eingebaute RGB-LED), GPIO9 (BOOT) und GPIO15 (Status-LED) frei lassen. In die DIN-Leitung am besten 330 Ω, am Streifenanfang einen Elko (100–470 µF) zwischen + und GND.
 
 `kartentest.py` ist für den ESP32-C6-Zero (SDA IO0, SCK IO1, MOSI IO2, MISO IO3, RST IO4).
 
@@ -72,6 +72,7 @@ Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX, 3
 Karten sind Spieler, Teams sind Farben, die 5 Stationen sind die „Türme“.
 
 - **Teams:** Eine neue Karte kommt beim ersten Scan an irgendeiner Station ins Team mit den wenigsten Leuten (bei Gleichstand zufällig). Die Station blinkt 3× in der Teamfarbe. Pro Team dürfen höchstens Stationen − 2 Leute sein, also 3 bei 5 Stationen. Weitere Karten blinken 2× weiß.
+- **Start:** Die erste Karte an einer Station startet das Spiel und erobert gleich diese Station (Autostart, in der Spielleitung abschaltbar, dann startet das Spiel per Knopf).
 - **Erobern:** Im laufenden Spiel wechselt eine Station mit einer Karte des anderen Teams die Farbe, die Farbe läuft einmal um den Ring. Danach ist sie für die Sperrzeit (Standard 20 s) geschützt, ein Versuch flackert nur.
 - **Punkte:** Erst wenn keine Station mehr neutral ist, bekommt jedes Team pro Sekunde 1 Punkt pro Station. Hält ein Team alle Stationen, zählt es doppelt, und alle Stationen pulsieren.
 - **Ende:** Nach der Laufzeit (Standard 10 min) leuchten alle Stationen in der Siegerfarbe.
@@ -80,7 +81,7 @@ Anzeige am Ring: Lobby = weiß atmend, neutral = weißer Lauf, erobert = Lauf in
 
 ### Server
 
-Die Webansicht unter https://fangulus.kidslab.de zeigt die Stationen, die Restzeit und die Punkte. Sie sagt Ereignisse an („Station 1 ist jetzt rot“), dafür einmal „Ton an“ drücken. Unter „Spielleitung“ werden Laufzeit, Sperrzeit und Teamzahl eingestellt, außerdem gibt es Start, Stop und Neues Spiel. Dafür ist das Passwort `TAGGED_ADMIN` nötig.
+Die Webansicht unter https://fangulus.kidslab.de zeigt die Stationen, die Restzeit und die Punkte. Sie sagt Ereignisse an („Station 1 ist jetzt rot“), dafür einmal „Ton an“ drücken. Unter „Spielleitung“ werden Laufzeit, Sperrzeit, Teamzahl und Autostart eingestellt, außerdem gibt es Start, Stop und Neues Spiel. Dafür ist das Passwort `TAGGED_ADMIN` nötig.
 
 Die Stationen sprechen Klartext-HTTP (Port 80) mit `?token=TAGGED_TOKEN`, die Webansicht läuft über HTTPS. Ein Push auf `main`, der `server/` ändert, baut das Image und deployt es nach `/opt/tagged`. Einmalig auf dem Server: `/opt/tagged/.env` mit `TAGGED_TOKEN=...` und `TAGGED_ADMIN=...` anlegen, im Repo die Secrets `SERVER_HOST`, `SERVER_USER` und `SERVER_SSH_KEY` setzen.
 
