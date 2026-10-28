@@ -6,11 +6,11 @@ import FreeCAD as App
 import Part
 
 OUT_DIR = "/home/kingbbq/src/tagged/freecad"
-FONT = "/usr/share/fonts/tex-gyre/texgyreadventor-bold.otf"
+FONT = os.path.join(OUT_DIR, "PixelifySans-Bold.ttf")  # Pixelify Sans, statisch auf wght 700 gesetzt
 
-TEXT_MAIN = "DISC"
-TEXT_SUB = "#01"
+TEXT_MAIN = "FANGULUS"
 TEXT_TAP = "TAP HERE"
+STATIONEN = (1, 2, 3, 4, 5)  # je Station ein Deckel mit grosser Ziffer
 
 # Gehaeuse
 W_IN, L_IN, R_IN = 80.0, 148.0, 16.0  # Innenraum
@@ -72,8 +72,8 @@ def cyl(r, h, x, y, z):
     return Part.makeCylinder(r, h, App.Vector(x, y, z))
 
 
-def text_faces(text, width, cx, cy):
-    """Text als Flaechen, skaliert auf die Breite `width` (mm), zentriert auf (cx, cy)."""
+def text_faces(text, width, cx, cy, height=None):
+    """Text als Flaechen, skaliert auf die Breite `width` (mm) bzw. Hoehe `height`, zentriert auf (cx, cy)."""
     import Draft
     doc = App.ActiveDocument
     ss = Draft.make_shapestring(String=text, FontFile=FONT, Size=10.0, Tracking=0.0)
@@ -82,7 +82,7 @@ def text_faces(text, width, cx, cy):
     doc.removeObject(ss.Name)
     bb = shape.BoundBox
     shape.translate(App.Vector(-(bb.XMin + bb.XMax) / 2, -(bb.YMin + bb.YMax) / 2, 0))
-    shape.scale(width / bb.XLength)
+    shape.scale(height / bb.YLength if height else width / bb.XLength)
     shape.translate(App.Vector(cx, cy, 0))
     return shape
 
@@ -106,11 +106,11 @@ def arc_band(r0, r1, angle_deg, cx, cy):
     return band.fuse(ends)
 
 
-def logo_solid():
+def logo_solid(station):
     """Alle Front-Grafiken als 2D-Flaechen -> extrudiert auf LOGO_DEPTH, oben buendig mit dem Deckel."""
     solids = []
     # Kontaktlos-Symbol ueber der Antenne
-    icx, icy = 0.0, 90.0
+    icx, icy = 0.0, 101.0
     solids.append(Part.makeCylinder(2.4, 1, App.Vector(icx, icy, 0)))
     for r0 in (7.0, 12.0, 17.0):
         solids.append(arc_band(r0, r0 + 2.5, 90, icx, icy))
@@ -124,7 +124,9 @@ def logo_solid():
     flat = []
     for s in solids:
         flat.append(s)
-    for f in (text_faces(TEXT_TAP, 40.0, 0, 57.0), text_faces(TEXT_MAIN, 56.0, 0, 29.0), text_faces(TEXT_SUB, 16.0, 0, 10.0)):
+    # TAP HERE in der Lesezone, darunter grosse Stationsnummer und FANGULUS
+    for f in (text_faces(TEXT_TAP, 40.0, 0, 83.0), text_faces(str(station), None, 0, 41.0, height=34.0),
+              text_faces(TEXT_MAIN, 64.0, 0, 12.0)):
         flat.append(f.extrude(App.Vector(0, 0, 1)))
     logo = flat[0].fuse(flat[1:]).removeSplitter()
     logo.scale(1.0)
@@ -222,7 +224,7 @@ def build():
 
     base = make_base()
     lid_full = make_lid()
-    logo = logo_solid()
+    logo = logo_solid(STATIONEN[0])
     lid = lid_full.cut(logo)
     logo_inlay = logo.common(lid_full)
 
@@ -254,7 +256,14 @@ def build():
 
     os.makedirs(OUT_DIR, exist_ok=True)
     doc.saveAs(os.path.join(OUT_DIR, "DiscCase.FCStd"))
-    export_print(objs)
+    export_print({n: objs[n].Shape for n in ("Unterteil", "Deckel", "Deckel_Logo")}, "Druck", stl=True)
+    # Je Station eine Front (Deckel + Logo) zum Einzeldruck
+    for nr in STATIONEN:
+        logo_nr = logo_solid(nr)
+        lid_nr, inlay_nr = lid_full.cut(logo_nr), logo_nr.common(lid_full)
+        print("Front %d       valid=%s solids=%d/%d" % (
+            nr, lid_nr.isValid() and inlay_nr.isValid(), len(lid_nr.Solids), len(inlay_nr.Solids)))
+        export_print({"Deckel": lid_nr, "Deckel_Logo": inlay_nr}, "Front_%d" % nr)
 
     for name in ("Unterteil", "Deckel", "Deckel_Logo"):
         s = objs[name].Shape
@@ -272,14 +281,14 @@ def build():
     return doc
 
 
-def export_print(objs):
-    """Exportiert druckfertig ausgerichtet: Unterteil mit Boden unten, Deckel mit Front unten daneben.
-    DiscCase_Druck.3mf enthaelt alle drei Teile (Logo als eigenes Objekt fuer Mehrfarbdruck)."""
+def export_print(parts, tag, stl=False):
+    """Exportiert druckfertig ausgerichtet: Unterteil (falls dabei) mit Boden unten, Deckel mit Front unten daneben.
+    DiscCase_<tag>.3mf enthaelt alle Teile (Logo als eigenes Objekt fuer Mehrfarbdruck)."""
     import Mesh
     flip = App.Placement(App.Vector(0, 0, 0), App.Rotation(App.Vector(0, 1, 0), 180))
-    shapes = {"Unterteil": objs["Unterteil"].Shape.copy()}
+    shapes = {"Unterteil": parts["Unterteil"].copy()} if "Unterteil" in parts else {}
     for name in ("Deckel", "Deckel_Logo"):
-        s = objs[name].Shape.copy()
+        s = parts[name].copy()
         s.transformShape(flip.toMatrix())
         shapes[name] = s
     lid_bb = shapes["Deckel"].BoundBox
@@ -295,12 +304,13 @@ def export_print(objs):
         o = pdoc.addObject("Part::Feature", name)
         o.Shape = s
         feats.append(o)
-        Mesh.export([o], os.path.join(OUT_DIR, "DiscCase_%s.stl" % name))
+        if stl:
+            Mesh.export([o], os.path.join(OUT_DIR, "DiscCase_%s.stl" % name))
     pdoc.recompute()
-    Mesh.export(feats, os.path.join(OUT_DIR, "DiscCase_Druck.3mf"))
+    Mesh.export(feats, os.path.join(OUT_DIR, "DiscCase_%s.3mf" % tag))
     import runpy, sys
     argv = sys.argv
-    sys.argv = ["group_3mf.py", os.path.join(OUT_DIR, "DiscCase_Druck.3mf"), os.path.join(OUT_DIR, "DiscCase_Druck_Bambu.3mf")]
+    sys.argv = ["group_3mf.py", os.path.join(OUT_DIR, "DiscCase_%s.3mf" % tag), os.path.join(OUT_DIR, "DiscCase_%s_Bambu.3mf" % tag)]
     try:
         runpy.run_path(os.path.join(OUT_DIR, "group_3mf.py"), run_name="__main__")
     finally:
@@ -309,7 +319,7 @@ def export_print(objs):
         b = o.Shape.BoundBox
         print("Druck %-12s z=%.2f..%.2f  x=%.1f..%.1f" % (o.Name, b.ZMin, b.ZMax, b.XMin, b.XMax))
     App.closeDocument("DiscCase_Druck")
-    App.setActiveDocument(objs["Unterteil"].Document.Name)
+    App.setActiveDocument("DiscCase")
 
 
 def render_previews(doc):

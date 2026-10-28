@@ -15,9 +15,11 @@ root = ET.fromstring(zin.read("3D/3dmodel.model"))
 resources, build = root.find(q("resources")), root.find(q("build"))
 
 objects = resources.findall(q("object"))
-names = ["Unterteil", "Deckel", "Deckel_Logo"]  # Reihenfolge wie von FreeCAD exportiert
+names = ["Unterteil", "Deckel", "Deckel_Logo"][-len(objects):]  # Reihenfolge wie von FreeCAD exportiert, Unterteil optional
 for obj, name in zip(objects, names):
     obj.set("name", name)
+base = [o for o in objects if o.get("name") == "Unterteil"]
+lid_parts = [o for o in objects if o.get("name") != "Unterteil"]
 extruders = {"Unterteil": 1, "Deckel": 1, "Deckel_Logo": 2}  # Filament-Slot je Teil
 
 # Ohne "BambuStudio-" als Application laedt Bambu Studio nur die Geometrie und ignoriert model_settings.config
@@ -30,22 +32,22 @@ for i, (key, val) in enumerate((("Application", "BambuStudio-02.08.02.61"), ("Ba
 
 group = ET.SubElement(resources, q("object"), id=str(len(objects) + 1), type="model", name="Deckel_mit_Logo")
 comps = ET.SubElement(group, q("components"))
-for obj in objects[1:]:
+for obj in lid_parts:
     ET.SubElement(comps, q("component"), objectid=obj.get("id"))
 
 transforms = {item.get("objectid"): item.get("transform") for item in build}
 for item in list(build):
     build.remove(item)
-base_item = ET.SubElement(build, q("item"), objectid=objects[0].get("id"))
-group_item = ET.SubElement(build, q("item"), objectid=group.get("id"))
-for item, obj in ((base_item, objects[0]), (group_item, objects[1])):
+items = [(ET.SubElement(build, q("item"), objectid=b.get("id")), b) for b in base]
+items.append((ET.SubElement(build, q("item"), objectid=group.get("id")), lid_parts[0]))
+for item, obj in items:
     if transforms.get(obj.get("id")):
         item.set("transform", transforms[obj.get("id")])
 
 cfg = ET.Element("config")
 def add_meta(parent, key, value):
     ET.SubElement(parent, "metadata", key=key, value=str(value))
-for obj, members in ((objects[0], [objects[0]]), (group, objects[1:])):
+for obj, members in [(b, [b]) for b in base] + [(group, lid_parts)]:
     o = ET.SubElement(cfg, "object", id=obj.get("id"))
     add_meta(o, "name", obj.get("name"))
     add_meta(o, "extruder", extruders[members[0].get("name")])
@@ -56,7 +58,7 @@ for obj, members in ((objects[0], [objects[0]]), (group, objects[1:])):
 plate = ET.SubElement(cfg, "plate")
 add_meta(plate, "plater_id", 1)
 add_meta(plate, "locked", "false")
-for obj in (objects[0], group):
+for obj in base + [group]:
     inst = ET.SubElement(plate, "model_instance")
     add_meta(inst, "object_id", obj.get("id"))
     add_meta(inst, "instance_id", 0)

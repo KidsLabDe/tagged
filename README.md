@@ -48,7 +48,9 @@ RC522 und LEDs an Lolin S2 Mini (`code.py`):
 - `freecad/`: parametrisches Gehäuse
   - `disc_case.py`: in FreeCAD ausführen, erzeugt `DiscCase.FCStd`, STLs, 3MFs und Vorschaubilder
   - `group_3mf.py`: baut die Bambu-Studio-3MF (Deckel + Logo als ein Objekt, Logo auf Filament 2)
-  - `DiscCase_Druck_Bambu.3mf`: druckfertig für Bambu Lab (X1C-Profil, zweifarbiger Deckel)
+  - `DiscCase_Druck_Bambu.3mf`: druckfertig für Bambu Lab (X1C-Profil, Unterteil + zweifarbiger Deckel von Station 1)
+  - `DiscCase_Front_1_Bambu.3mf` … `DiscCase_Front_5_Bambu.3mf`: nur der Deckel je Station („FANGULUS“ + Nummer 1–5), Logo auf Filament 2
+  - `PixelifySans-Bold.ttf`: Schrift für alle Texte (Pixelify Sans, statische Bold-Instanz, SIL Open Font License)
 
 ## Firmware aufspielen
 
