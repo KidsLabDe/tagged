@@ -23,19 +23,26 @@ RFID-Station für Spiele im KidsLab: Karte an die Disc halten, die Station erken
 - LED-Streifen: + an Akku-Plus hinter dem Schalter, GND an GND
 - Die Diode verhindert, dass USB am ESP-Board den Akku direkt mit 5 V speist
 
-RC522 an ESP32-C6-Zero:
+RC522 und LEDs an Lolin S2 Mini (`code.py`):
 
-| RC522 | ESP32-C6-Zero |
-|-------|---------------|
-| SDA   | IO0 |
-| SCK   | IO1 |
-| MOSI  | IO2 |
-| MISO  | IO3 |
-| RST   | IO4 |
+| Bauteil | Lolin S2 Mini |
+|---------|---------------|
+| RC522 SDA | IO12 |
+| RC522 SCK | IO7 |
+| RC522 MOSI | IO11 |
+| RC522 MISO | IO9 |
+| RC522 RST | IO5 |
+| RC522 3.3V | 3V3 |
+| LED-Streifen DIN (25 LEDs im Kreis) | IO40 |
+
+`kartentest.py` ist für den ESP32-C6-Zero (SDA IO0, SCK IO1, MOSI IO2, MISO IO3, RST IO4).
 
 ## Ordner
 
-- `circuitpython/`: Firmware (`code.py`, minimaler `rc522.py`-Treiber) und Hilfsskripte
+- `circuitpython/`: Firmware und Hilfsskripte
+  - `code.py`: rundlaufende Animation auf dem LED-Ring, erkannte Karte -> 5× rot atmen
+  - `rc522.py`: minimaler RC522-Treiber
+  - `kartentest.py`: zeigt UID und Kartentyp jeder erkannten Karte
   - `upload.py`: Dateien über die serielle REPL aufs Board laden (für Boards ohne USB-Laufwerk)
   - `log_serial.py`: serielle Ausgabe mitschreiben
 - `freecad/`: parametrisches Gehäuse
@@ -44,6 +51,9 @@ RC522 an ESP32-C6-Zero:
   - `DiscCase_Druck_Bambu.3mf`: druckfertig für Bambu Lab (X1C-Profil, zweifarbiger Deckel)
 
 ## Firmware aufspielen
+
+Der S2 Mini taucht mit CircuitPython als Laufwerk `CIRCUITPY` auf: `code.py` und `rc522.py` einfach draufkopieren.
+Für Boards ohne USB-Laufwerk (z. B. ESP32-C6):
 
 ```sh
 cd circuitpython
