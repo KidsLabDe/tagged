@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `tagged_server.py` nutzt nur die Python-Standardbibliothek, der Spielzustand liegt im Speicher. Lokal: `TAGGED_TOKEN=test uv run --no-project python server/tagged_server.py --port 8090` (8080 ist auf dem Laptop belegt).
 - Die Webansicht ist eine einzige Datei, `static/index.html`, ohne Build. Texte dort und in den Server-Ereignissen haben echte Umlaute, weil sie vorgelesen werden.
-- Deployment über `.github/workflows/deploy.yml` nach `/opt/tagged` auf dem kidslab.de-Server (Traefik, Netzwerk `proxy`, wie `../kidslab.de`). Der HTTP-Router darf nicht auf HTTPS umleiten, weil die Stationen Klartext sprechen.
+- `.github/workflows/build.yml` baut nur das Image nach GHCR; ausgeliefert wird von Hand nach `/opt/tagged` auf dem kidslab.de-Server (Traefik, Netzwerk `proxy`, wie `../kidslab.de`). Der HTTP-Router darf nicht auf HTTPS umleiten, weil die Stationen Klartext sprechen.
 
 ## Gehäuse (`freecad/`)
 

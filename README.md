@@ -57,7 +57,7 @@ Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; a
   - `upload.py`: Dateien über die serielle REPL aufs Board laden (für Boards ohne USB-Laufwerk)
   - `log_serial.py`: serielle Ausgabe mitschreiben
 - `server/`: Spielserver (Python, nur Standardbibliothek) mit Webansicht `static/index.html`, läuft als Docker-Container auf fangulus.kidslab.de
-- `docker-compose.yml`, `.github/workflows/deploy.yml`: Deployment wie bei kidslab.de (Image auf GHCR, Traefik)
+- `docker-compose.yml`, `.github/workflows/build.yml`: Image auf GHCR, Betrieb mit Traefik wie bei kidslab.de
 - `freecad/`: parametrisches Gehäuse
   - `disc_case.py`: in FreeCAD ausführen, erzeugt `DiscCase.FCStd`, STLs, 3MFs und Vorschaubilder
   - `group_3mf.py`: baut die Bambu-Studio-3MF (Deckel + Logo als ein Objekt, Logo auf Filament 2)
@@ -82,7 +82,7 @@ Anzeige am Ring: Lobby = weiß atmend, neutral = weißer Lauf, erobert = Lauf in
 
 Die Webansicht unter https://fangulus.kidslab.de zeigt die Stationen, die Restzeit und die Punkte. Sie sagt Ereignisse an („Station 1 ist jetzt rot“), dafür einmal „Ton an“ drücken. Unter „Spielleitung“ werden Laufzeit, Sperrzeit, Teamzahl und Autostart eingestellt, außerdem gibt es Start, Stop und Neues Spiel. Dafür ist das Passwort `TAGGED_ADMIN` nötig.
 
-Die Stationen sprechen Klartext-HTTP (Port 80) mit `?token=TAGGED_TOKEN`, die Webansicht läuft über HTTPS. Ein Push auf `main`, der `server/` ändert, baut das Image und deployt es nach `/opt/tagged`. Einmalig auf dem Server: `/opt/tagged/.env` mit `TAGGED_TOKEN=...` und `TAGGED_ADMIN=...` anlegen, im Repo die Secrets `SERVER_HOST`, `SERVER_USER` und `SERVER_SSH_KEY` setzen.
+Die Stationen sprechen Klartext-HTTP (Port 80) mit `?token=TAGGED_TOKEN`, die Webansicht läuft über HTTPS. Ein Push auf `main`, der `server/` ändert, baut das Image `ghcr.io/kidslabde/tagged:latest`. Ausgeliefert wird von Hand: auf dem Server in `/opt/tagged` (dort liegen `docker-compose.yml` und `.env` mit `TAGGED_TOKEN=...` und `TAGGED_ADMIN=...`) `docker compose pull && docker compose up -d`.
 
 Lokal testen:
 
