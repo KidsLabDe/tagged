@@ -3,127 +3,268 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live-Spielstand von FANGULUS: welche Station welches Team hat, Punkte und was gerade passiert.">
 <title>FANGULUS – Tagged!</title>
+<link href="https://api.fontshare.com/v2/css?f[]=chillax@500,600&display=swap" rel="stylesheet">
 <style>
-  @font-face { font-family: "Pixelify"; src: url("PixelifySans-Bold.ttf") format("truetype"); }
-  :root { --bg: #14111c; --panel: #1f1a2b; --line: #3a3150; --text: #f2eefa; --muted: #9c93b3; --neutral: #4a4360; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 18px/1.4 system-ui, sans-serif; }
-  .pixel { font-family: "Pixelify", monospace; letter-spacing: 0.04em; }
-  main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 40px; display: grid; gap: 20px; }
+/* Hallmark · shape: app screen · genre: playful · theme: Hum (by request) · redesign: full
+ * nav: kept, a top bar with the wordmark and the clock · signature: the five station fronts, traced from DiscCase_Front_1..5.3mf, standing in the grass and lit in the team colours · states: connecting, lobby, running, over, station offline
+ * axes: light/rounded-sans/chromatic-yellow · posture: full-palette · contrast: pass · copy: verbatim · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: H, scores and fronts compete; the fronts get their own ground band so the eye ends there */
+/* Hallmark · answered F4 · .btn is the card-stock secondary, only .btn--primary (Start) is filled */
+/* Hallmark · display face: Pixelify Sans by request, the face the case lettering is cut in */
+@font-face { font-family: "Pixelify"; src: url("PixelifySans-Bold.ttf") format("truetype"); font-display: swap; }
 
-  header { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-  header h1 { margin: 0; font-size: 56px; line-height: 1; }
-  header .phase { color: var(--muted); font-size: 20px; margin-top: 6px; }
-  .clock { font-size: 96px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .clock.low { color: #ff5a5a; animation: blink 1s steps(2) infinite; }
+:root {
+  color-scheme: light;
+  --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
+  --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-wordmark: clamp(2.25rem, 4.5vw, 3.5rem); --text-clock: clamp(4rem, 9vw, 7.5rem); --text-score: 3.5rem;
+  --dur-micro: 120ms; --dur-short: 220ms;
+  --container: 1440px; --gutter: 48px;
+  --color-paper: oklch(97% 0.012 95); --color-paper-2: oklch(94.5% 0.018 95); --color-paper-3: oklch(91% 0.022 95);
+  --color-ink: oklch(20% 0.014 255); --color-ink-2: oklch(29% 0.014 255); --color-muted: oklch(47% 0.014 255);
+  --color-rule: oklch(87% 0.016 95);
+  --color-accent: oklch(87% 0.175 96); --color-accent-deep: oklch(72% 0.16 92); --color-accent-ink: oklch(20% 0.014 255);
+  --color-accent-2: oklch(50% 0.17 250); --color-accent-3: oklch(70% 0.2 22);
+  --color-focus: oklch(50% 0.17 250); --color-error: oklch(52% 0.19 27);
+  --color-card: oklch(98.8% 0.007 95); --color-edge: oklch(83% 0.04 88); --color-fringe: oklch(99.2% 0.006 95);
+  --color-kraft: oklch(63% 0.085 62); --color-hill-1: oklch(94.5% 0.03 118); --color-hill-2: oklch(91.5% 0.045 135); --color-leaf: oklch(64% 0.15 150);
+  --color-plate: oklch(79% 0.05 318);
+  --team-0: oklch(56% 0.22 27); --team-1: oklch(50% 0.2 262); --team-2: oklch(60% 0.17 150); --team-3: oklch(80% 0.16 80);
+  --font-display: "Pixelify", ui-monospace, monospace; --font-body: "Chillax", ui-rounded, ui-sans-serif, sans-serif;
+  --radius-card: 24px; --radius-stock: 16px; --radius-input: 14px; --radius-pill: 999px;
+  --shadow-card: 0 1px 2px oklch(20% 0.014 255 / 0.06), 0 12px 28px -14px oklch(20% 0.014 255 / 0.22);
+  --shadow-paper: drop-shadow(0 0 0.6px oklch(20% 0.014 255 / 0.32)) drop-shadow(1.5px 2.5px 1.5px oklch(20% 0.014 255 / 0.1)) drop-shadow(6px 14px 16px oklch(20% 0.014 255 / 0.13));
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .22 0 0 0 0 .12 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='turbulence' baseFrequency='.008 .35' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .26 0 0 0 0 .15 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --tear-hill: polygon(0.0% 5px, 1.2% 7px, 2.2% 7px, 3.6% 2px, 5.2% 0px, 6.8% 0px, 7.8% 0px, 9.9% 0px, 11.1% 2px, 13.3% 3px, 14.7% 9px, 15.8% 13px, 17.1% 9px, 18.2% 6px, 20.2% 2px, 21.9% 4px, 23.3% 5px, 24.4% 0px, 25.6% 2px, 27.1% 0px, 28.8% 0px, 30.2% 4px, 32.0% 0px, 33.7% 1px, 35.8% 4px, 37.1% 10px, 38.2% 9px, 40.2% 4px, 41.8% 0px, 43.6% 3px, 45.3% 8px, 46.6% 11px, 48.3% 12px, 49.9% 14px, 52.1% 14px, 53.9% 8px, 55.7% 10px, 58.0% 14px, 59.3% 13px, 61.1% 7px, 62.7% 2px, 63.8% 0px, 65.7% 0px, 67.0% 0px, 69.1% 0px, 70.6% 1px, 72.7% 5px, 74.7% 2px, 76.2% 0px, 78.3% 6px, 79.5% 2px, 80.7% 0px, 82.3% 1px, 83.6% 0px, 85.1% 0px, 86.8% 6px, 88.6% 6px, 90.4% 8px, 91.4% 13px, 93.4% 14px, 95.4% 13px, 96.8% 8px, 98.6% 2px, 99.7% 0px, 100% 0px, 100% 100%, 0% 100%);
+  --tear-soil: polygon(0.0% 9px, 2.2% 10px, 3.2% 10px, 4.7% 10px, 5.9% 7px, 7.4% 5px, 8.9% 0px, 10.0% 2px, 11.5% 2px, 13.4% 1px, 14.4% 4px, 16.2% 5px, 17.9% 9px, 19.3% 10px, 20.8% 10px, 22.6% 8px, 23.6% 8px, 25.5% 9px, 27.1% 10px, 28.2% 7px, 29.6% 10px, 30.8% 6px, 31.9% 2px, 33.2% 3px, 35.2% 1px, 36.7% 0px, 38.0% 2px, 39.7% 0px, 40.8% 3px, 42.7% 6px, 43.9% 6px, 46.1% 7px, 48.2% 4px, 50.4% 0px, 51.9% 0px, 53.9% 2px, 56.1% 4px, 58.3% 5px, 60.5% 7px, 61.9% 10px, 63.4% 7px, 64.4% 7px, 65.6% 10px, 67.8% 7px, 68.9% 8px, 70.1% 8px, 72.1% 6px, 73.6% 9px, 75.1% 8px, 77.2% 10px, 79.3% 10px, 80.8% 10px, 82.8% 10px, 84.1% 8px, 85.6% 10px, 87.3% 10px, 89.3% 6px, 91.0% 5px, 92.7% 8px, 94.0% 10px, 95.1% 10px, 96.7% 8px, 98.4% 7px, 99.9% 9px, 100% 9px, 100% 100%, 0% 100%);
+}
 
-  .banner { border-radius: 14px; padding: 14px 20px; font-size: 28px; text-align: center; display: none; }
-  .banner.show { display: block; }
-  .banner.dom { animation: pulse 0.8s ease-in-out infinite alternate; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { scrollbar-color: var(--color-muted) var(--color-paper); }
+body { caret-color: var(--color-accent-2); }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--grain), var(--fibre), var(--color-paper);
+       color: var(--color-ink); font: 500 1.125rem/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+::selection { background: color-mix(in oklab, var(--color-accent) 45%, transparent); color: var(--color-ink); }
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+h1, h2 { margin: 0; overflow-wrap: break-word; min-width: 0; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+svg { display: block; }
+.container { width: 100%; max-width: var(--container); margin-inline: auto; padding-inline: var(--gutter); }
 
-  .teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-  .team { background: var(--panel); border-radius: 14px; padding: 14px 18px; border-left: 12px solid; display: flex; justify-content: space-between; align-items: center; }
-  .team .name { font-size: 28px; }
-  .team .members { color: var(--muted); font-size: 16px; }
-  .team .score { font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+/* ---- Kopfzeile ---- */
+.bar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-lg); flex-wrap: wrap; padding-block: var(--space-lg) var(--space-md); }
+.wordmark { font: 400 var(--text-wordmark)/1 var(--font-display); letter-spacing: 0.02em; }
+.phase { color: var(--color-muted); font-size: var(--text-lg); margin-top: var(--space-xs); max-width: 60ch; }
+.clock { font: 400 var(--text-clock)/0.9 var(--font-display); font-variant-numeric: tabular-nums; }
+.clock.low { color: var(--team-0); animation: blink 1s steps(2) infinite; }
 
-  .stations { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-  .station { aspect-ratio: 3 / 4; border-radius: 22px; background: var(--neutral); display: flex; flex-direction: column;
-             align-items: center; justify-content: center; position: relative; transition: background 0.4s; border: 4px solid transparent; }
-  .station .nr { font-size: clamp(64px, 11vw, 140px); line-height: 1; text-shadow: 0 4px 0 rgba(0,0,0,0.25); }
-  .station .info { font-size: 18px; min-height: 1.4em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-  .station.offline { opacity: 0.35; border: 4px dashed var(--muted); }
-  .station.flash { animation: flash 0.6s ease-out 2; }
-  .station.dom { animation: pulse 0.8s ease-in-out infinite alternate; }
+.stage { display: grid; gap: var(--space-lg); padding-bottom: var(--space-xl); }
 
-  .events { background: var(--panel); border-radius: 14px; padding: 12px 18px; }
-  .events h2, details summary { font-size: 16px; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
-  .events ul { list-style: none; margin: 0; padding: 0; }
-  .events li { padding: 3px 0; border-bottom: 1px solid var(--line); }
-  .events li:last-child { border: 0; }
-  .events time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 10px; }
+/* ---- Banner: ein Blatt in Teamfarbe ---- */
+.banner { display: none; border-radius: var(--radius-card); padding: var(--space-md) var(--space-lg); text-align: center;
+          font: 400 var(--text-2xl)/1.15 var(--font-display); text-wrap: balance;
+          background: var(--grain), var(--fibre), var(--c, var(--color-paper-3)); color: var(--color-ink); filter: var(--shadow-paper); }
+.banner.show { display: block; }
+.banner[data-tone="team"] { color: var(--color-fringe); }
+.banner[data-tone="team"][data-team="3"] { color: var(--color-ink); }
+.banner[data-tone="pear"] { --c: var(--color-accent); }
+.banner.dom { animation: pulse 0.8s ease-in-out infinite alternate; }
 
-  .howto { background: var(--panel); border-radius: 14px; padding: 18px 24px; display: none; }
-  .howto.show { display: block; }
-  .howto .who { font-size: 24px; margin: 0 0 14px; }
-  .howto ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-  .howto li { display: flex; gap: 14px; align-items: center; font-size: 24px; line-height: 1.25; }
-  .howto .n { font-size: 64px; line-height: 1; color: var(--muted); }
-  .howto .fine { color: var(--muted); font-size: 17px; margin: 14px 0 0; }
+/* ---- Anleitung: Karton-Kacheln auf einem Packpapierstreifen ---- */
+.howto { display: none; gap: var(--space-md); }
+.howto.show { display: grid; }
+.howto .who { font: 400 var(--text-3xl)/1.1 var(--font-display); max-width: 32ch; }
+.howto ol { list-style: none; margin: 0; padding: var(--space-lg); border-radius: var(--radius-card);
+            background: var(--grain), var(--fibre), var(--color-kraft); filter: var(--shadow-paper);
+            display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-md); }
+.howto li { display: flex; gap: var(--space-md); align-items: center; padding: var(--space-md); border-radius: var(--radius-stock);
+            background: var(--grain), var(--fibre), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule), 0 5px 0 0 var(--color-edge);
+            font-size: var(--text-xl); line-height: 1.25; }
+.howto .n { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: var(--radius-stock);
+            font: 400 2.5rem/1 var(--font-display); background: var(--grain), var(--c); color: var(--color-ink); }
+.howto li:nth-child(1) .n { --c: var(--color-accent); }
+.howto li:nth-child(2) .n { --c: var(--color-accent-2); color: var(--color-fringe); }
+.howto li:nth-child(3) .n { --c: var(--color-accent-3); }
+.howto .fine { color: var(--color-muted); max-width: 80ch; }
 
-  details { background: var(--panel); border-radius: 14px; padding: 12px 18px; }
-  details summary { cursor: pointer; margin: 0; }
-  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; margin-top: 12px; }
-  .controls label { display: grid; gap: 4px; color: var(--muted); font-size: 15px; }
-  input, select, button { font: inherit; color: var(--text); background: var(--bg); border: 2px solid var(--line); border-radius: 10px; padding: 8px 12px; }
-  input[type=number] { width: 90px; }
-  button { cursor: pointer; font-weight: 600; }
-  button:disabled { opacity: 0.4; cursor: default; }
-  button.go { background: #2f8f4e; border-color: #2f8f4e; }
-  button.stop { background: #a33a3a; border-color: #a33a3a; }
-  .topbtn { position: fixed; right: 16px; bottom: 16px; }
-  .err { color: #ff8080; }
+/* ---- Teams und Ereignisse ---- */
+.board { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-lg); align-items: start; }
+.teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-md); }
+.teams:empty { display: none; }
+.team { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-md);
+        padding: var(--space-md) var(--space-lg); border-radius: var(--radius-card);
+        background: var(--grain), var(--fibre), var(--color-card); box-shadow: var(--shadow-card); }
+.team .tag { width: 30px; height: auto; fill: var(--c); filter: var(--shadow-paper); }
+.team .name { font: 400 var(--text-2xl)/1.1 var(--font-display); }
+.team .members { color: var(--color-muted); font-size: var(--text-sm); }
+.team .score { font: 400 var(--text-score)/1 var(--font-display); font-variant-numeric: tabular-nums; }
 
-  @keyframes pulse { from { filter: brightness(0.8); } to { filter: brightness(1.3); } }
-  @keyframes flash { 0% { filter: brightness(2.2); transform: scale(1.04); } 100% { filter: none; transform: none; } }
-  @keyframes blink { 50% { opacity: 0.35; } }
-  @media (max-width: 800px) { .stations { grid-template-columns: repeat(3, 1fr); } .clock { font-size: 64px; } header h1 { font-size: 40px; } }
+.events:has(ul:empty) { display: none; }
+.events { padding: var(--space-md) var(--space-lg); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-paper-2); }
+.events h2 { font-size: var(--text-md); font-weight: 600; color: var(--color-muted); margin-bottom: var(--space-xs); }
+.events ul { list-style: none; margin: 0; padding: 0; }
+.events li { padding: var(--space-2xs) 0; border-bottom: 1px solid var(--color-rule); }
+.events li:last-child { border: 0; }
+.events time { color: var(--color-muted); font-variant-numeric: tabular-nums; margin-right: var(--space-sm); }
+
+/* ---- Die Stationen: Fronten im Gras ---- */
+.field { position: relative; margin-top: auto; padding-top: var(--space-lg); }
+.field::before, .field::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; }
+.field::before { top: 38%; background: var(--grain), var(--fibre), var(--color-hill-2); clip-path: var(--tear-hill); filter: var(--shadow-paper); }
+.field::after { height: 72px; background: var(--grain), var(--fibre), var(--color-kraft); clip-path: var(--tear-soil); }
+.stations { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-lg);
+            max-width: 1120px; margin-inline: auto; padding: 0 var(--gutter) var(--space-lg); }
+.station { margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: start; gap: var(--space-sm); }
+.station svg { justify-self: stretch; margin-inline: auto; }
+.station svg { width: 100%; max-width: 190px; height: auto; filter: var(--shadow-paper); transition: filter var(--dur-short) var(--ease-snap); }
+.station .plate { fill: var(--color-plate); transition: fill var(--dur-short) var(--ease-snap); }
+.station .inlay { fill: var(--color-ink); }
+.station .nr { fill: var(--color-ink); font: 400 44px var(--font-display); text-anchor: middle; }
+.station .info { min-height: 1.6em; padding: 0 var(--space-sm); border-radius: var(--radius-pill); background: var(--color-card);
+                 box-shadow: var(--shadow-card); font-size: var(--text-sm); font-weight: 600; text-align: center; max-width: 100%; }
+.station .info:empty { visibility: hidden; }
+.station.owned .plate { fill: color-mix(in oklab, var(--c) 82%, var(--color-fringe)); }
+.station.owned svg { filter: drop-shadow(0 0 22px color-mix(in oklab, var(--c) 65%, transparent)) var(--shadow-paper); }
+.station.offline svg { opacity: 0.4; filter: grayscale(1); }
+.station.offline .info { background: transparent; box-shadow: inset 0 0 0 1px var(--color-muted); color: var(--color-muted); }
+.station.flash svg { animation: flash 0.6s var(--ease-snap) 2; }
+.station.dom svg { animation: pulse 0.8s ease-in-out infinite alternate; }
+/* vor dem Spiel blinken die Fronten rot und blau wie die Stationen */
+.stations.demo .station:not(.offline) .plate { animation: redblue 2.4s linear infinite; animation-delay: calc(var(--i) * -0.48s); }
+
+/* ---- Spielleitung ---- */
+.admin { padding-block: var(--space-lg) var(--space-2xl); background: var(--grain), var(--fibre), var(--color-kraft); }
+details { border-radius: var(--radius-card); padding: var(--space-md) var(--space-lg); background: var(--grain), var(--fibre), var(--color-card); box-shadow: var(--shadow-card); }
+summary { cursor: pointer; font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-lg); align-items: end; margin-top: var(--space-md); }
+.controls label { display: grid; gap: var(--space-2xs); color: var(--color-muted); font-size: var(--text-sm); }
+.controls label span { display: flex; align-items: center; gap: var(--space-xs); min-height: 44px; color: var(--color-ink); font-size: var(--text-md); }
+input, select { font: inherit; color: var(--color-ink); background: var(--color-card); min-height: 44px; padding: 0 var(--space-sm);
+                border: 1px solid var(--color-muted); border-radius: var(--radius-input); }
+input:hover, select:hover { border-color: var(--color-ink); }
+input:focus-visible, select:focus-visible { outline-offset: 0; }
+input[type=number] { width: 96px; }
+input[type=checkbox] { min-height: 0; width: 20px; height: 20px; accent-color: var(--color-accent-2); }
+.err { color: var(--color-error); font-weight: 600; min-height: 1.5em; }
+
+.btn { --edge: 5px; display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 44px; padding: 0 var(--space-lg);
+       border: 0; border-radius: var(--radius-stock); font: 600 var(--text-md)/1 var(--font-body); color: var(--color-ink); cursor: pointer;
+       background: var(--grain), var(--fibre), var(--color-card); box-shadow: inset 0 0 0 1px var(--color-rule), 0 var(--edge) 0 0 var(--color-edge);
+       transition: translate var(--dur-micro) var(--ease-snap), box-shadow var(--dur-micro) var(--ease-snap); }
+.btn--primary { background: var(--grain), var(--fibre), var(--color-accent); color: var(--color-accent-ink);
+                box-shadow: 0 var(--edge) 0 0 var(--color-accent-deep); transition-timing-function: var(--ease-spring); }
+.btn--stop { color: var(--color-error); }
+.btn:hover { --edge: 7px; translate: 0 -2px; }
+.btn:active { --edge: 1px; translate: 0 4px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; translate: none; --edge: 1px; background: var(--color-paper-3); }
+.btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn .waves { display: none; }
+.btn .mute { display: inline; }
+.btn[aria-pressed="true"] .waves { display: inline; }
+.btn[aria-pressed="true"] .mute { display: none; }
+.topbtn { position: fixed; right: var(--space-md); bottom: var(--space-md); z-index: 10; }
+
+@keyframes pulse { from { filter: brightness(0.85); } to { filter: brightness(1.25); } }
+@keyframes flash { 0% { filter: brightness(1.8); translate: 0 -10px; } 100% { filter: none; translate: 0 0; } }
+@keyframes blink { 50% { opacity: 0.35; } }
+@keyframes redblue {
+  0%, 100% { fill: var(--color-plate); } 10%, 40% { fill: var(--team-0); } 50% { fill: var(--color-plate); } 60%, 90% { fill: var(--team-1); }
+}
+
+@media (max-width: 60rem) {
+  :root { --gutter: 24px; }
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .howto ol { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 40rem) {
+  :root { --gutter: 16px; --text-score: 2.5rem; }
+  .station .info { font-size: 0.75rem; line-height: 1.3; padding: var(--space-2xs); border-radius: var(--radius-input); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .stations.demo .station:not(.offline):nth-child(odd) .plate { animation: none; fill: var(--team-0); }
+  .stations.demo .station:not(.offline):nth-child(even) .plate { animation: none; fill: var(--team-1); }
+  .clock.low { animation: none; }
+}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div>
-      <h1 class="pixel">FANGULUS</h1>
-      <div class="phase" id="phase">Verbinde…</div>
-    </div>
-    <div class="clock pixel" id="clock">--:--</div>
-  </header>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs>
+<symbol id="plate" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M-42 -132L-41.9 -133.8L-41.7 -135.5L-41.5 -136.4L-40.9 -138.1L-40.3 -139.7L-39.4 -141.3L-38.5 -142.7L-37.3 -144.1L-36.1 -145.3L-34.7 -146.5L-33.3 -147.4L-32.5 -147.9L-30.9 -148.6L-29.2 -149.2L-27.5 -149.7L-25.8 -149.9L-24 -150L24 -150L25.8 -149.9L26.6 -149.8L28.4 -149.5L30.1 -148.9L30.9 -148.6L32.5 -147.9L34 -147L35.4 -145.9L36.7 -144.7L37.3 -144.1L38.5 -142.7L39.4 -141.3L40.3 -139.7L40.6 -138.9L40.9 -138.1L41.5 -136.4L41.8 -134.6L42 -132.9L42 -132L42 -15.1L41.8 -13.4L41.5 -11.6L41.2 -10.8L40.9 -9.9L40.3 -8.3L39.4 -6.7L39 -6L37.9 -4.6L36.7 -3.3L36.1 -2.7L34.7 -1.5L33.3 -0.6L31.7 0.3L30.9 0.6L29.2 1.2L27.5 1.7L26.6 1.8L24.9 2L-24 2L-25.8 1.9L-27.5 1.7L-29.2 1.2L-30.1 0.9L-31.7 0.3L-32.5 -0.1L-34 -1L-34.7 -1.5L-36.1 -2.7L-37.3 -3.9L-38.5 -5.3L-39.4 -6.7L-39.9 -7.5L-40.6 -9.1L-40.9 -9.9L-41.5 -11.6L-41.8 -13.4L-42 -15.1L-42 -16L-42 -132ZM-0.1 -142.5L-0.6 -142.4L-1 -142.3L-1.5 -142L-1.8 -141.7L-2.1 -141.3L-2.3 -140.9L-2.5 -140.4L-2.5 -139.9L-2.4 -139.4L-2.3 -138.9L-1.7 -138.2L-1.4 -137.9L-0.9 -137.7L-0.4 -137.5L0.1 -137.5L0.6 -137.6L1 -137.7L1.5 -138L1.8 -138.3L2.1 -138.7L2.3 -139.1L2.5 -139.6L2.5 -140.1L2.4 -140.6L2.3 -141.1L1.7 -141.8L1.4 -142.1L0.9 -142.3L0.4 -142.5L-0.1 -142.5ZM42 -16L42 -16L42 -16L42 -16ZM-42 -16L-42 -16L-42 -16L-42 -16Z"/></symbol>
+<symbol id="inlay1" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M25.4 -15.3L26.6 -15.3L26.6 -16.4L30.8 -16.4L30.8 -15.3L32 -15.3L32 -13.4L30.3 -13.4L30.3 -14.6L27.2 -14.6L27.2 -12.9L30.8 -12.9L30.8 -11.8L32 -11.8L32 -8.7L30.8 -8.7L30.8 -7.6L26.6 -7.6L26.6 -8.7L25.4 -8.7L25.4 -10.6L27.2 -10.6L27.2 -9.4L30.3 -9.4L30.3 -11.1L26.6 -11.1L26.6 -12.2L25.4 -12.2L25.4 -15.3ZM16 -133.8L25 -133.8L25 -133L25.8 -133L25.8 -124L24.2 -124L24.2 -132.2L16 -132.2L16 -133.8ZM16 -66.2L16 -67.8L24.2 -67.8L24.2 -76L25.8 -76L25.8 -67L25 -67L25 -66.2L16 -66.2ZM17.2 -8.7L17.2 -16.4L19 -16.4L19 -9.4L22.1 -9.4L22.1 -16.4L23.8 -16.4L23.8 -8.7L22.6 -8.7L22.6 -7.6L18.4 -7.6L18.4 -8.7L17.2 -8.7ZM15.5 -80.8L15.5 -85.2L16.3 -85.2L16.3 -86L19.2 -86L19.2 -85.2L20 -85.2L20 -84L18.8 -84L18.8 -84.8L16.7 -84.8L16.7 -83.6L18.4 -83.6L18.4 -82.4L16.7 -82.4L16.7 -81.2L18.8 -81.2L18.8 -82L20 -82L20 -80.8L19.2 -80.8L19.2 -80L16.3 -80L16.3 -80.8L15.5 -80.8ZM9 -8.7L9 -16.4L10.8 -16.4L10.8 -9.4L13.9 -9.4L13.9 -10.6L15.6 -10.6L15.6 -8.7L14.4 -8.7L14.4 -7.6L10.2 -7.6L10.2 -8.7L9 -8.7ZM9.9 -80L9.9 -85.2L10.7 -85.2L10.7 -86L13.6 -86L13.6 -85.2L14.4 -85.2L14.4 -82.4L13.6 -82.4L13.6 -81.6L13.2 -81.6L13.2 -81.2L14 -81.2L14 -80L12.8 -80L12.8 -80.8L12 -80.8L12 -81.6L11.1 -81.6L11.1 -80L9.9 -80ZM13.2 -82.8L13.2 -84.8L11.1 -84.8L11.1 -82.8L13.2 -82.8ZM-14.2 -113.9L-14.1 -114.3L-13.9 -114.7L-12.6 -115.9L-10.7 -117.3L-8.6 -118.5L-6.3 -119.4L-4.7 -119.9L-2.1 -120.4L-0.4 -120.5L1.3 -120.5L3.9 -120.1L5.6 -119.7L7.9 -118.8L10.1 -117.7L11.7 -116.6L12.4 -116L13.9 -114.7L14.1 -114.3L14.2 -113.9L14 -113.3L13.6 -112.9L13.1 -112.7L12.6 -112.7L12.1 -112.9L11 -113.9L9.4 -115.2L8.2 -115.9L6.9 -116.5L4.8 -117.3L3.4 -117.7L1.9 -117.9L0.3 -118L-1.2 -118L-2.7 -117.8L-4.2 -117.5L-6.3 -116.8L-7.6 -116.2L-9.5 -115.1L-10.6 -114.3L-12.1 -112.9L-12.5 -112.7L-13.1 -112.7L-13.7 -112.9L-14 -113.3L-14.2 -113.9ZM12.7 -112.7L12.7 -112.7L12.7 -112.7L12.7 -112.7ZM14.1 -113.5L14.1 -113.5L14.1 -113.5L14.1 -113.5ZM11.7 -116.6L11.7 -116.6L11.7 -116.6L11.7 -116.6ZM-10.6 -110.4L-10.6 -110.7L-10.4 -111.1L-9.3 -112.1L-7.8 -113.2L-6 -114.2L-4.1 -114.9L-2.8 -115.2L-1.4 -115.4L0 -115.5L1.4 -115.4L2.8 -115.2L4.2 -114.9L6.1 -114.2L7.8 -113.2L9.4 -112.1L10.4 -111.1L10.6 -110.8L10.6 -110.4L10.5 -109.8L10.2 -109.4L9.6 -109.1L9.1 -109.2L8.6 -109.4L7.7 -110.2L6.7 -110.9L5.7 -111.5L4.8 -112L3.8 -112.4L2.4 -112.8L1.4 -112.9L-0.2 -113L-1.2 -112.9L-2.3 -112.8L-3.3 -112.5L-4.7 -112L-5.6 -111.6L-6.4 -111.1L-7.6 -110.3L-8.6 -109.4L-9.1 -109.2L-9.6 -109.1L-10.1 -109.4L-10.5 -109.8L-10.6 -110.4ZM10.6 -110.6L10.6 -110.6L10.6 -110.6L10.6 -110.6ZM-10 -111.5L-10 -111.5L-10 -111.5L-10 -111.5ZM4.3 -80.8L4.3 -85.2L5.1 -85.2L5.1 -86L7.9 -86L7.9 -85.2L8.8 -85.2L8.8 -84L7.6 -84L7.6 -84.8L5.5 -84.8L5.5 -83.6L7.1 -83.6L7.1 -82.4L5.5 -82.4L5.5 -81.2L7.6 -81.2L7.6 -82L8.8 -82L8.8 -80.8L7.9 -80.8L7.9 -80L5.1 -80L5.1 -80.8L4.3 -80.8ZM-8 -46.4L-8 -53.5L-3.4 -53.5L-3.4 -58L3.3 -58L3.3 -53.5L8 -53.5L8 -24L1.3 -24L1.3 -50.9L-1.3 -50.9L-1.3 -46.4L-8 -46.4ZM0.8 -8.7L0.8 -16.4L2.6 -16.4L2.6 -9.4L5.7 -9.4L5.7 -16.4L7.4 -16.4L7.4 -8.7L6.2 -8.7L6.2 -7.6L2 -7.6L2 -8.7L0.8 -8.7ZM-7.1 -106.8L-7 -107.3L-6.7 -107.7L-5.7 -108.6L-4.5 -109.4L-3.4 -109.9L-2.2 -110.2L-1 -110.4L-0.2 -110.5L0.7 -110.5L1.9 -110.3L3.1 -110L4.2 -109.5L5.3 -108.9L6.4 -108L6.9 -107.5L7 -107.2L7.1 -106.8L7 -106.4L6.7 -106L6.3 -105.7L5.9 -105.6L5.5 -105.6L5.2 -105.8L3.9 -106.8L2.9 -107.4L1.7 -107.8L0.8 -108L-0.2 -108L-0.8 -108L-1.4 -107.8L-2.4 -107.6L-3.7 -106.9L-4.4 -106.4L-5.1 -105.8L-5.6 -105.6L-6.2 -105.6L-6.6 -105.9L-7 -106.3L-7.1 -106.8ZM0.7 -110.5L0.7 -110.5L0.7 -110.5L0.7 -110.5ZM-6 -108.3L-6 -108.3L-6 -108.3L-6 -108.3ZM-6.9 -107.4L-6.9 -107.4L-6.9 -107.4L-6.9 -107.4ZM-1.3 -80L-1.3 -86L-0.1 -86L-0.1 -83.6L0.3 -83.6L0.3 -84.4L1.5 -84.4L1.5 -83.6L2 -83.6L2 -86L3.2 -86L3.2 -80L2 -80L2 -82.4L-0.1 -82.4L-0.1 -80L-1.3 -80ZM-2.4 -100.9L-2.4 -101.4L-2.3 -101.8L-2.1 -102.2L-1.7 -102.6L-1.4 -103L-1 -103.2L-0.6 -103.3L-0.1 -103.4L0.4 -103.4L0.8 -103.3L1.2 -103.1L1.6 -102.8L1.9 -102.4L2.2 -102L2.3 -101.5L2.4 -101.1L2.4 -100.6L2.2 -100.2L2.1 -99.8L1.8 -99.4L1.4 -99.1L1 -98.8L0.6 -98.7L0.1 -98.6L-0.3 -98.6L-0.8 -98.7L-1.2 -98.9L-1.6 -99.2L-1.9 -99.6L-2.2 -100L-2.3 -100.4L-2.4 -100.9ZM0.9 -98.8L0.9 -98.8L0.9 -98.8L0.9 -98.8ZM1 -98.8L1 -98.8L1 -98.8L1 -98.8ZM0.6 -103.3L0.6 -103.3L0.6 -103.3L0.6 -103.3ZM-2.2 -101.9L-2.2 -101.9L-2.2 -101.9L-2.2 -101.9ZM-1.1 -98.8L-1.1 -98.8L-1.1 -98.8L-1.1 -98.8ZM-7.4 -8.7L-7.4 -15.3L-6.2 -15.3L-6.2 -16.4L-2 -16.4L-2 -15.3L-0.8 -15.3L-0.8 -12.2L-2.6 -12.2L-2.6 -14.6L-5.7 -14.6L-5.7 -9.4L-2.6 -9.4L-2.6 -9.9L-3.8 -9.9L-3.8 -11.1L-5 -11.1L-5 -12.9L-3.2 -12.9L-3.2 -11.8L-0.8 -11.8L-0.8 -8.7L-2 -8.7L-2 -7.6L-6.2 -7.6L-6.2 -8.7L-7.4 -8.7ZM-8.8 -80L-8.8 -85.2L-8 -85.2L-8 -86L-5.1 -86L-5.1 -85.2L-4.3 -85.2L-4.3 -82.4L-5.1 -82.4L-5.1 -81.6L-7.6 -81.6L-7.6 -80L-8.8 -80ZM-5.5 -82.8L-5.5 -84.8L-7.6 -84.8L-7.6 -82.8L-5.5 -82.8ZM-15.6 -7.6L-15.6 -16.4L-13.9 -16.4L-13.9 -15.3L-12.6 -15.3L-12.6 -14.1L-11.4 -14.1L-11.4 -10.6L-10.8 -10.6L-10.8 -16.4L-9 -16.4L-9 -7.6L-10.8 -7.6L-10.8 -8.7L-12 -8.7L-12 -9.9L-13.2 -9.9L-13.2 -13.4L-13.9 -13.4L-13.9 -7.6L-15.6 -7.6ZM-14.4 -84.4L-13.6 -84.4L-13.6 -85.2L-12.7 -85.2L-12.7 -86L-11.6 -86L-11.6 -85.2L-10.7 -85.2L-10.7 -84.4L-9.9 -84.4L-9.9 -80L-11.1 -80L-11.1 -81.6L-13.2 -81.6L-13.2 -80L-14.4 -80L-14.4 -84.4ZM-12.4 -84L-13.2 -84L-13.2 -82.8L-11.1 -82.8L-11.1 -84L-11.9 -84L-11.9 -84.8L-12.4 -84.8L-12.4 -84ZM-20 -84L-20 -85.2L-19.2 -85.2L-19.2 -86L-16.4 -86L-16.4 -85.2L-15.5 -85.2L-15.5 -84L-16.7 -84L-16.7 -84.8L-17.2 -84.8L-17.2 -80L-18.3 -80L-18.3 -84.8L-18.8 -84.8L-18.8 -84L-20 -84ZM-25.8 -124L-25.8 -133L-25 -133L-25 -133.8L-16 -133.8L-16 -132.2L-24.2 -132.2L-24.2 -124L-25.8 -124ZM-25.8 -67L-25.8 -76L-24.2 -76L-24.2 -67.8L-16 -67.8L-16 -66.2L-25 -66.2L-25 -67L-25.8 -67ZM-23.8 -14.1L-22.6 -14.1L-22.6 -15.3L-21.4 -15.3L-21.4 -16.4L-19.6 -16.4L-19.6 -15.3L-18.5 -15.3L-18.5 -14.1L-17.2 -14.1L-17.2 -7.6L-19 -7.6L-19 -9.9L-22.1 -9.9L-22.1 -7.6L-23.8 -7.6L-23.8 -14.1ZM-20.9 -13.4L-22.1 -13.4L-22.1 -11.8L-19 -11.8L-19 -13.4L-20.2 -13.4L-20.2 -14.6L-20.9 -14.6L-20.9 -13.4ZM-32 -7.6L-32 -16.4L-26.6 -16.4L-26.6 -15.3L-25.4 -15.3L-25.4 -13.4L-27.2 -13.4L-27.2 -14.6L-30.3 -14.6L-30.3 -12.9L-27.8 -12.9L-27.8 -11.1L-30.3 -11.1L-30.3 -7.6L-32 -7.6Z"/></symbol>
+<symbol id="inlay2" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M25.4 -15.3L26.6 -15.3L26.6 -16.4L30.8 -16.4L30.8 -15.3L32 -15.3L32 -13.4L30.3 -13.4L30.3 -14.6L27.2 -14.6L27.2 -12.9L30.8 -12.9L30.8 -11.8L32 -11.8L32 -8.7L30.8 -8.7L30.8 -7.6L26.6 -7.6L26.6 -8.7L25.4 -8.7L25.4 -10.6L27.2 -10.6L27.2 -9.4L30.3 -9.4L30.3 -11.1L26.6 -11.1L26.6 -12.2L25.4 -12.2L25.4 -15.3ZM16 -133.8L25 -133.8L25 -133L25.8 -133L25.8 -124L24.2 -124L24.2 -132.2L16 -132.2L16 -133.8ZM16 -66.2L16 -67.8L24.2 -67.8L24.2 -76L25.8 -76L25.8 -67L25 -67L25 -66.2L16 -66.2ZM17.2 -8.7L17.2 -16.4L19 -16.4L19 -9.4L22.1 -9.4L22.1 -16.4L23.8 -16.4L23.8 -8.7L22.6 -8.7L22.6 -7.6L18.4 -7.6L18.4 -8.7L17.2 -8.7ZM15.5 -80.8L15.5 -85.2L16.3 -85.2L16.3 -86L19.2 -86L19.2 -85.2L20 -85.2L20 -84L18.8 -84L18.8 -84.8L16.7 -84.8L16.7 -83.6L18.4 -83.6L18.4 -82.4L16.7 -82.4L16.7 -81.2L18.8 -81.2L18.8 -82L20 -82L20 -80.8L19.2 -80.8L19.2 -80L16.3 -80L16.3 -80.8L15.5 -80.8ZM9 -8.7L9 -16.4L10.8 -16.4L10.8 -9.4L13.9 -9.4L13.9 -10.6L15.6 -10.6L15.6 -8.7L14.4 -8.7L14.4 -7.6L10.2 -7.6L10.2 -8.7L9 -8.7ZM9.9 -80L9.9 -85.2L10.7 -85.2L10.7 -86L13.6 -86L13.6 -85.2L14.4 -85.2L14.4 -82.4L13.6 -82.4L13.6 -81.6L13.2 -81.6L13.2 -81.2L14 -81.2L14 -80L12.8 -80L12.8 -80.8L12 -80.8L12 -81.6L11.1 -81.6L11.1 -80L9.9 -80ZM11.1 -84.8L11.1 -82.8L13.2 -82.8L13.2 -84.8L11.1 -84.8ZM-14.2 -113.9L-14.1 -114.3L-13.9 -114.7L-12.6 -115.9L-10.7 -117.3L-8.6 -118.5L-6.3 -119.4L-4.7 -119.9L-2.1 -120.4L-0.4 -120.5L1.3 -120.5L3.9 -120.1L5.6 -119.7L7.9 -118.8L10.1 -117.7L11.7 -116.6L12.4 -116L13.9 -114.7L14.1 -114.3L14.2 -113.9L14 -113.3L13.6 -112.9L13.1 -112.7L12.6 -112.7L12.1 -112.9L11 -113.9L9.4 -115.2L8.2 -115.9L6.9 -116.5L4.8 -117.3L3.4 -117.7L1.9 -117.9L0.3 -118L-1.2 -118L-2.7 -117.8L-4.2 -117.5L-6.3 -116.8L-7.6 -116.2L-9.5 -115.1L-10.6 -114.3L-12.1 -112.9L-12.5 -112.7L-13.1 -112.7L-13.7 -112.9L-14 -113.3L-14.2 -113.9ZM12.7 -112.7L12.7 -112.7L12.7 -112.7L12.7 -112.7ZM14.1 -113.5L14.1 -113.5L14.1 -113.5L14.1 -113.5ZM11.7 -116.6L11.7 -116.6L11.7 -116.6L11.7 -116.6ZM-12.6 -28.5L-12.6 -40.2L-8 -40.2L-8 -44.6L6 -44.6L6 -50.9L-6 -50.9L-6 -46.4L-12.6 -46.4L-12.6 -53.5L-8 -53.5L-8 -58L7.9 -58L7.9 -53.5L12.6 -53.5L12.6 -41.9L7.9 -41.9L7.9 -37.4L-6 -37.4L-6 -31.1L6 -31.1L6 -35.6L12.6 -35.6L12.6 -28.5L7.9 -28.5L7.9 -24L-8 -24L-8 -28.5L-12.6 -28.5ZM-10.6 -110.4L-10.6 -110.7L-10.4 -111.1L-9.3 -112.1L-7.8 -113.2L-6 -114.2L-4.1 -114.9L-2.8 -115.2L-1.4 -115.4L0 -115.5L1.4 -115.4L2.8 -115.2L4.2 -114.9L6.1 -114.2L7.8 -113.2L9.4 -112.1L10.4 -111.1L10.6 -110.8L10.6 -110.4L10.5 -109.8L10.2 -109.4L9.6 -109.1L9.1 -109.2L8.6 -109.4L7.7 -110.2L6.7 -110.9L5.7 -111.5L4.8 -112L3.8 -112.4L2.4 -112.8L1.4 -112.9L-0.2 -113L-1.2 -112.9L-2.3 -112.8L-3.3 -112.5L-4.7 -112L-5.6 -111.6L-6.4 -111.1L-7.6 -110.3L-8.6 -109.4L-9.1 -109.2L-9.6 -109.1L-10.1 -109.4L-10.5 -109.8L-10.6 -110.4ZM10.6 -110.6L10.6 -110.6L10.6 -110.6L10.6 -110.6ZM-10 -111.5L-10 -111.5L-10 -111.5L-10 -111.5ZM4.3 -80.8L4.3 -85.2L5.1 -85.2L5.1 -86L7.9 -86L7.9 -85.2L8.8 -85.2L8.8 -84L7.6 -84L7.6 -84.8L5.5 -84.8L5.5 -83.6L7.1 -83.6L7.1 -82.4L5.5 -82.4L5.5 -81.2L7.6 -81.2L7.6 -82L8.8 -82L8.8 -80.8L7.9 -80.8L7.9 -80L5.1 -80L5.1 -80.8L4.3 -80.8ZM0.8 -8.7L0.8 -16.4L2.6 -16.4L2.6 -9.4L5.7 -9.4L5.7 -16.4L7.4 -16.4L7.4 -8.7L6.2 -8.7L6.2 -7.6L2 -7.6L2 -8.7L0.8 -8.7ZM-7.1 -106.8L-7 -107.3L-6.7 -107.7L-5.7 -108.6L-4.5 -109.4L-3.4 -109.9L-2.2 -110.2L-1 -110.4L-0.2 -110.5L0.7 -110.5L1.9 -110.3L3.1 -110L4.2 -109.5L5.3 -108.9L6.4 -108L6.9 -107.5L7 -107.2L7.1 -106.8L7 -106.4L6.7 -106L6.3 -105.7L5.9 -105.6L5.5 -105.6L5.2 -105.8L3.9 -106.8L2.9 -107.4L1.7 -107.8L0.8 -108L-0.2 -108L-0.8 -108L-1.4 -107.8L-2.4 -107.6L-3.7 -106.9L-4.4 -106.4L-5.1 -105.8L-5.6 -105.6L-6.2 -105.6L-6.6 -105.9L-7 -106.3L-7.1 -106.8ZM6.9 -106.3L6.9 -106.3L6.9 -106.3L6.9 -106.3ZM0.7 -110.5L0.7 -110.5L0.7 -110.5L0.7 -110.5ZM-6 -108.3L-6 -108.3L-6 -108.3L-6 -108.3ZM-6.9 -107.4L-6.9 -107.4L-6.9 -107.4L-6.9 -107.4ZM-1.3 -80L-1.3 -86L-0.1 -86L-0.1 -83.6L0.3 -83.6L0.3 -84.4L1.5 -84.4L1.5 -83.6L2 -83.6L2 -86L3.2 -86L3.2 -80L2 -80L2 -82.4L-0.1 -82.4L-0.1 -80L-1.3 -80ZM-2.4 -100.9L-2.4 -101.4L-2.3 -101.8L-2.1 -102.2L-1.7 -102.6L-1.4 -103L-1 -103.2L-0.6 -103.3L-0.1 -103.4L0.4 -103.4L0.8 -103.3L1.2 -103.1L1.6 -102.8L1.9 -102.4L2.2 -102L2.3 -101.5L2.4 -101.1L2.4 -100.6L2.2 -100.2L2.1 -99.8L1.8 -99.4L1.4 -99.1L1 -98.8L0.6 -98.7L0.1 -98.6L-0.3 -98.6L-0.8 -98.7L-1.2 -98.9L-1.6 -99.2L-1.9 -99.6L-2.2 -100L-2.3 -100.4L-2.4 -100.9ZM0.9 -98.8L0.9 -98.8L0.9 -98.8L0.9 -98.8ZM1 -98.8L1 -98.8L1 -98.8L1 -98.8ZM0.6 -103.3L0.6 -103.3L0.6 -103.3L0.6 -103.3ZM-2.2 -101.9L-2.2 -101.9L-2.2 -101.9L-2.2 -101.9ZM-1.1 -98.8L-1.1 -98.8L-1.1 -98.8L-1.1 -98.8ZM-7.4 -8.7L-7.4 -15.3L-6.2 -15.3L-6.2 -16.4L-2 -16.4L-2 -15.3L-0.8 -15.3L-0.8 -12.2L-2.6 -12.2L-2.6 -14.6L-5.7 -14.6L-5.7 -9.4L-2.6 -9.4L-2.6 -9.9L-3.8 -9.9L-3.8 -11.1L-5 -11.1L-5 -12.9L-3.2 -12.9L-3.2 -11.8L-0.8 -11.8L-0.8 -8.7L-2 -8.7L-2 -7.6L-6.2 -7.6L-6.2 -8.7L-7.4 -8.7ZM-8.8 -80L-8.8 -85.2L-8 -85.2L-8 -86L-5.1 -86L-5.1 -85.2L-4.3 -85.2L-4.3 -82.4L-5.1 -82.4L-5.1 -81.6L-7.6 -81.6L-7.6 -80L-8.8 -80ZM-5.5 -82.8L-5.5 -84.8L-7.6 -84.8L-7.6 -82.8L-5.5 -82.8ZM-15.6 -7.6L-15.6 -16.4L-13.9 -16.4L-13.9 -15.3L-12.6 -15.3L-12.6 -14.1L-11.4 -14.1L-11.4 -10.6L-10.8 -10.6L-10.8 -16.4L-9 -16.4L-9 -7.6L-10.8 -7.6L-10.8 -8.7L-12 -8.7L-12 -9.9L-13.2 -9.9L-13.2 -13.4L-13.9 -13.4L-13.9 -7.6L-15.6 -7.6ZM-14.4 -84.4L-13.6 -84.4L-13.6 -85.2L-12.7 -85.2L-12.7 -86L-11.6 -86L-11.6 -85.2L-10.7 -85.2L-10.7 -84.4L-9.9 -84.4L-9.9 -80L-11.1 -80L-11.1 -81.6L-13.2 -81.6L-13.2 -80L-14.4 -80L-14.4 -84.4ZM-12.4 -84L-13.2 -84L-13.2 -82.8L-11.1 -82.8L-11.1 -84L-11.9 -84L-11.9 -84.8L-12.4 -84.8L-12.4 -84ZM-20 -84L-20 -85.2L-19.2 -85.2L-19.2 -86L-16.4 -86L-16.4 -85.2L-15.5 -85.2L-15.5 -84L-16.7 -84L-16.7 -84.8L-17.2 -84.8L-17.2 -80L-18.3 -80L-18.3 -84.8L-18.8 -84.8L-18.8 -84L-20 -84ZM-25.8 -124L-25.8 -133L-25 -133L-25 -133.8L-16 -133.8L-16 -132.2L-24.2 -132.2L-24.2 -124L-25.8 -124ZM-25.8 -67L-25.8 -76L-24.2 -76L-24.2 -67.8L-16 -67.8L-16 -66.2L-25 -66.2L-25 -67L-25.8 -67ZM-23.8 -14.1L-22.6 -14.1L-22.6 -15.3L-21.4 -15.3L-21.4 -16.4L-19.6 -16.4L-19.6 -15.3L-18.5 -15.3L-18.5 -14.1L-17.2 -14.1L-17.2 -7.6L-19 -7.6L-19 -9.9L-22.1 -9.9L-22.1 -7.6L-23.8 -7.6L-23.8 -14.1ZM-20.9 -13.4L-22.1 -13.4L-22.1 -11.8L-19 -11.8L-19 -13.4L-20.2 -13.4L-20.2 -14.6L-20.9 -14.6L-20.9 -13.4ZM-32 -7.6L-32 -16.4L-26.6 -16.4L-26.6 -15.3L-25.4 -15.3L-25.4 -13.4L-27.2 -13.4L-27.2 -14.6L-30.3 -14.6L-30.3 -12.9L-27.8 -12.9L-27.8 -11.1L-30.3 -11.1L-30.3 -7.6L-32 -7.6Z"/></symbol>
+<symbol id="inlay3" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M25.4 -15.3L26.6 -15.3L26.6 -16.4L30.8 -16.4L30.8 -15.3L32 -15.3L32 -13.4L30.3 -13.4L30.3 -14.6L27.2 -14.6L27.2 -12.9L30.8 -12.9L30.8 -11.8L32 -11.8L32 -8.7L30.8 -8.7L30.8 -7.6L26.6 -7.6L26.6 -8.7L25.4 -8.7L25.4 -10.6L27.2 -10.6L27.2 -9.4L30.3 -9.4L30.3 -11.1L26.6 -11.1L26.6 -12.2L25.4 -12.2L25.4 -15.3ZM16 -133.8L25 -133.8L25 -133L25.8 -133L25.8 -124L24.2 -124L24.2 -132.2L16 -132.2L16 -133.8ZM16 -66.2L16 -67.8L24.2 -67.8L24.2 -76L25.8 -76L25.8 -67L25 -67L25 -66.2L16 -66.2ZM17.2 -8.7L17.2 -16.4L19 -16.4L19 -9.4L22.1 -9.4L22.1 -16.4L23.8 -16.4L23.8 -8.7L22.6 -8.7L22.6 -7.6L18.4 -7.6L18.4 -8.7L17.2 -8.7ZM15.5 -80.8L15.5 -85.2L16.3 -85.2L16.3 -86L19.2 -86L19.2 -85.2L20 -85.2L20 -84L18.8 -84L18.8 -84.8L16.7 -84.8L16.7 -83.6L18.4 -83.6L18.4 -82.4L16.7 -82.4L16.7 -81.2L18.8 -81.2L18.8 -82L20 -82L20 -80.8L19.2 -80.8L19.2 -80L16.3 -80L16.3 -80.8L15.5 -80.8ZM9 -8.7L9 -16.4L10.8 -16.4L10.8 -9.4L13.9 -9.4L13.9 -10.6L15.6 -10.6L15.6 -8.7L14.4 -8.7L14.4 -7.6L10.2 -7.6L10.2 -8.7L9 -8.7ZM9.9 -80L9.9 -85.2L10.7 -85.2L10.7 -86L13.6 -86L13.6 -85.2L14.4 -85.2L14.4 -82.4L13.6 -82.4L13.6 -81.6L13.2 -81.6L13.2 -81.2L14 -81.2L14 -80L12.8 -80L12.8 -80.8L12 -80.8L12 -81.6L11.1 -81.6L11.1 -80L9.9 -80ZM11.1 -84.8L11.1 -82.8L13.2 -82.8L13.2 -84.8L11.1 -84.8ZM-14.2 -113.9L-14.1 -114.3L-13.9 -114.7L-12.6 -115.9L-10.7 -117.3L-8.6 -118.5L-6.3 -119.4L-4.7 -119.9L-2.1 -120.4L-0.4 -120.5L1.3 -120.5L3.9 -120.1L5.6 -119.7L7.9 -118.8L10.1 -117.7L11.7 -116.6L12.4 -116L13.9 -114.7L14.1 -114.3L14.2 -113.9L14 -113.3L13.6 -112.9L13.1 -112.7L12.6 -112.7L12.1 -112.9L11 -113.9L9.4 -115.2L8.2 -115.9L6.9 -116.5L4.8 -117.3L3.4 -117.7L1.9 -117.9L0.3 -118L-1.2 -118L-2.7 -117.8L-4.2 -117.5L-6.3 -116.8L-7.6 -116.2L-9.5 -115.1L-10.6 -114.3L-12.1 -112.9L-12.5 -112.7L-13.1 -112.7L-13.7 -112.9L-14 -113.3L-14.2 -113.9ZM12.7 -112.7L12.7 -112.7L12.7 -112.7L12.7 -112.7ZM14.1 -113.5L14.1 -113.5L14.1 -113.5L14.1 -113.5ZM11.7 -116.6L11.7 -116.6L11.7 -116.6L11.7 -116.6ZM-12.6 -46.4L-12.6 -53.5L-8 -53.5L-8 -58L7.9 -58L7.9 -53.5L12.6 -53.5L12.6 -41.9L7.9 -41.9L7.9 -40.2L12.6 -40.2L12.6 -28.5L7.9 -28.5L7.9 -24L-8 -24L-8 -28.5L-12.6 -28.5L-12.6 -35.6L-6 -35.6L-6 -31.1L6 -31.1L6 -37.4L-8 -37.4L-8 -44.6L6 -44.6L6 -50.9L-6 -50.9L-6 -46.4L-12.6 -46.4ZM-10.6 -110.4L-10.6 -110.7L-10.4 -111.1L-9.3 -112.1L-7.8 -113.2L-6 -114.2L-4.1 -114.9L-2.8 -115.2L-1.4 -115.4L0 -115.5L1.4 -115.4L2.8 -115.2L4.2 -114.9L6.1 -114.2L7.8 -113.2L9.4 -112.1L10.4 -111.1L10.6 -110.8L10.6 -110.4L10.5 -109.8L10.2 -109.4L9.6 -109.1L9.1 -109.2L8.6 -109.4L7.7 -110.2L6.7 -110.9L5.7 -111.5L4.8 -112L3.8 -112.4L2.4 -112.8L1.4 -112.9L-0.2 -113L-1.2 -112.9L-2.3 -112.8L-3.3 -112.5L-4.7 -112L-5.6 -111.6L-6.4 -111.1L-7.6 -110.3L-8.6 -109.4L-9.1 -109.2L-9.6 -109.1L-10.1 -109.4L-10.5 -109.8L-10.6 -110.4ZM10.6 -110.6L10.6 -110.6L10.6 -110.6L10.6 -110.6ZM-10 -111.5L-10 -111.5L-10 -111.5L-10 -111.5ZM4.3 -80.8L4.3 -85.2L5.1 -85.2L5.1 -86L7.9 -86L7.9 -85.2L8.8 -85.2L8.8 -84L7.6 -84L7.6 -84.8L5.5 -84.8L5.5 -83.6L7.1 -83.6L7.1 -82.4L5.5 -82.4L5.5 -81.2L7.6 -81.2L7.6 -82L8.8 -82L8.8 -80.8L7.9 -80.8L7.9 -80L5.1 -80L5.1 -80.8L4.3 -80.8ZM0.8 -8.7L0.8 -16.4L2.6 -16.4L2.6 -9.4L5.7 -9.4L5.7 -16.4L7.4 -16.4L7.4 -8.7L6.2 -8.7L6.2 -7.6L2 -7.6L2 -8.7L0.8 -8.7ZM-7.1 -106.8L-7 -107.3L-6.7 -107.7L-5.7 -108.6L-4.5 -109.4L-3.4 -109.9L-2.2 -110.2L-1 -110.4L-0.2 -110.5L0.7 -110.5L1.9 -110.3L3.1 -110L4.2 -109.5L5.3 -108.9L6.4 -108L6.9 -107.5L7 -107.2L7.1 -106.8L7 -106.4L6.7 -106L6.3 -105.7L5.9 -105.6L5.5 -105.6L5.2 -105.8L3.9 -106.8L2.9 -107.4L1.7 -107.8L0.8 -108L-0.2 -108L-0.8 -108L-1.4 -107.8L-2.4 -107.6L-3.7 -106.9L-4.4 -106.4L-5.1 -105.8L-5.6 -105.6L-6.2 -105.6L-6.6 -105.9L-7 -106.3L-7.1 -106.8ZM6.9 -106.3L6.9 -106.3L6.9 -106.3L6.9 -106.3ZM0.7 -110.5L0.7 -110.5L0.7 -110.5L0.7 -110.5ZM-6 -108.3L-6 -108.3L-6 -108.3L-6 -108.3ZM-6.9 -107.4L-6.9 -107.4L-6.9 -107.4L-6.9 -107.4ZM-1.3 -80L-1.3 -86L-0.1 -86L-0.1 -83.6L0.3 -83.6L0.3 -84.4L1.5 -84.4L1.5 -83.6L2 -83.6L2 -86L3.2 -86L3.2 -80L2 -80L2 -82.4L-0.1 -82.4L-0.1 -80L-1.3 -80ZM-2.4 -100.9L-2.4 -101.4L-2.3 -101.8L-2.1 -102.2L-1.7 -102.6L-1.4 -103L-1 -103.2L-0.6 -103.3L-0.1 -103.4L0.4 -103.4L0.8 -103.3L1.2 -103.1L1.6 -102.8L1.9 -102.4L2.2 -102L2.3 -101.5L2.4 -101.1L2.4 -100.6L2.2 -100.2L2.1 -99.8L1.8 -99.4L1.4 -99.1L1 -98.8L0.6 -98.7L0.1 -98.6L-0.3 -98.6L-0.8 -98.7L-1.2 -98.9L-1.6 -99.2L-1.9 -99.6L-2.2 -100L-2.3 -100.4L-2.4 -100.9ZM0.9 -98.8L0.9 -98.8L0.9 -98.8L0.9 -98.8ZM1 -98.8L1 -98.8L1 -98.8L1 -98.8ZM0.6 -103.3L0.6 -103.3L0.6 -103.3L0.6 -103.3ZM-2.2 -101.9L-2.2 -101.9L-2.2 -101.9L-2.2 -101.9ZM-1.1 -98.8L-1.1 -98.8L-1.1 -98.8L-1.1 -98.8ZM-7.4 -8.7L-7.4 -15.3L-6.2 -15.3L-6.2 -16.4L-2 -16.4L-2 -15.3L-0.8 -15.3L-0.8 -12.2L-2.6 -12.2L-2.6 -14.6L-5.7 -14.6L-5.7 -9.4L-2.6 -9.4L-2.6 -9.9L-3.8 -9.9L-3.8 -11.1L-5 -11.1L-5 -12.9L-3.2 -12.9L-3.2 -11.8L-0.8 -11.8L-0.8 -8.7L-2 -8.7L-2 -7.6L-6.2 -7.6L-6.2 -8.7L-7.4 -8.7ZM-8.8 -80L-8.8 -85.2L-8 -85.2L-8 -86L-5.1 -86L-5.1 -85.2L-4.3 -85.2L-4.3 -82.4L-5.1 -82.4L-5.1 -81.6L-7.6 -81.6L-7.6 -80L-8.8 -80ZM-5.5 -82.8L-5.5 -84.8L-7.6 -84.8L-7.6 -82.8L-5.5 -82.8ZM-15.6 -7.6L-15.6 -16.4L-13.9 -16.4L-13.9 -15.3L-12.6 -15.3L-12.6 -14.1L-11.4 -14.1L-11.4 -10.6L-10.8 -10.6L-10.8 -16.4L-9 -16.4L-9 -7.6L-10.8 -7.6L-10.8 -8.7L-12 -8.7L-12 -9.9L-13.2 -9.9L-13.2 -13.4L-13.9 -13.4L-13.9 -7.6L-15.6 -7.6ZM-14.4 -84.4L-13.6 -84.4L-13.6 -85.2L-12.7 -85.2L-12.7 -86L-11.6 -86L-11.6 -85.2L-10.7 -85.2L-10.7 -84.4L-9.9 -84.4L-9.9 -80L-11.1 -80L-11.1 -81.6L-13.2 -81.6L-13.2 -80L-14.4 -80L-14.4 -84.4ZM-12.4 -84L-13.2 -84L-13.2 -82.8L-11.1 -82.8L-11.1 -84L-11.9 -84L-11.9 -84.8L-12.4 -84.8L-12.4 -84ZM-20 -84L-20 -85.2L-19.2 -85.2L-19.2 -86L-16.4 -86L-16.4 -85.2L-15.5 -85.2L-15.5 -84L-16.7 -84L-16.7 -84.8L-17.2 -84.8L-17.2 -80L-18.3 -80L-18.3 -84.8L-18.8 -84.8L-18.8 -84L-20 -84ZM-25.8 -124L-25.8 -133L-25 -133L-25 -133.8L-16 -133.8L-16 -132.2L-24.2 -132.2L-24.2 -124L-25.8 -124ZM-25.8 -67L-25.8 -76L-24.2 -76L-24.2 -67.8L-16 -67.8L-16 -66.2L-25 -66.2L-25 -67L-25.8 -67ZM-23.8 -14.1L-22.6 -14.1L-22.6 -15.3L-21.4 -15.3L-21.4 -16.4L-19.6 -16.4L-19.6 -15.3L-18.5 -15.3L-18.5 -14.1L-17.2 -14.1L-17.2 -7.6L-19 -7.6L-19 -9.9L-22.1 -9.9L-22.1 -7.6L-23.8 -7.6L-23.8 -14.1ZM-20.9 -13.4L-22.1 -13.4L-22.1 -11.8L-19 -11.8L-19 -13.4L-20.2 -13.4L-20.2 -14.6L-20.9 -14.6L-20.9 -13.4ZM-32 -7.6L-32 -16.4L-26.6 -16.4L-26.6 -15.3L-25.4 -15.3L-25.4 -13.4L-27.2 -13.4L-27.2 -14.6L-30.3 -14.6L-30.3 -12.9L-27.8 -12.9L-27.8 -11.1L-30.3 -11.1L-30.3 -7.6L-32 -7.6Z"/></symbol>
+<symbol id="inlay4" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M25.4 -15.3L26.6 -15.3L26.6 -16.4L30.8 -16.4L30.8 -15.3L32 -15.3L32 -13.4L30.3 -13.4L30.3 -14.6L27.2 -14.6L27.2 -12.9L30.8 -12.9L30.8 -11.8L32 -11.8L32 -8.7L30.8 -8.7L30.8 -7.6L26.6 -7.6L26.6 -8.7L25.4 -8.7L25.4 -10.6L27.2 -10.6L27.2 -9.4L30.3 -9.4L30.3 -11.1L26.6 -11.1L26.6 -12.2L25.4 -12.2L25.4 -15.3ZM16 -133.8L25 -133.8L25 -133L25.8 -133L25.8 -124L24.2 -124L24.2 -132.2L16 -132.2L16 -133.8ZM16 -66.2L16 -67.8L24.2 -67.8L24.2 -76L25.8 -76L25.8 -67L25 -67L25 -66.2L16 -66.2ZM17.2 -8.7L17.2 -16.4L19 -16.4L19 -9.4L22.1 -9.4L22.1 -16.4L23.8 -16.4L23.8 -8.7L22.6 -8.7L22.6 -7.6L18.4 -7.6L18.4 -8.7L17.2 -8.7ZM15.5 -80.8L15.5 -85.2L16.3 -85.2L16.3 -86L19.2 -86L19.2 -85.2L20 -85.2L20 -84L18.8 -84L18.8 -84.8L16.7 -84.8L16.7 -83.6L18.4 -83.6L18.4 -82.4L16.7 -82.4L16.7 -81.2L18.8 -81.2L18.8 -82L20 -82L20 -80.8L19.2 -80.8L19.2 -80L16.3 -80L16.3 -80.8L15.5 -80.8ZM9 -8.7L9 -16.4L10.8 -16.4L10.8 -9.4L13.9 -9.4L13.9 -10.6L15.6 -10.6L15.6 -8.7L14.4 -8.7L14.4 -7.6L10.2 -7.6L10.2 -8.7L9 -8.7ZM9.9 -80L9.9 -85.2L10.7 -85.2L10.7 -86L13.6 -86L13.6 -85.2L14.4 -85.2L14.4 -82.4L13.6 -82.4L13.6 -81.6L13.2 -81.6L13.2 -81.2L14 -81.2L14 -80L12.8 -80L12.8 -80.8L12 -80.8L12 -81.6L11.1 -81.6L11.1 -80L9.9 -80ZM13.2 -82.8L13.2 -84.8L11.1 -84.8L11.1 -82.8L13.2 -82.8ZM-14.2 -113.9L-14.1 -114.3L-13.9 -114.7L-12.6 -115.9L-10.7 -117.3L-8.6 -118.5L-6.3 -119.4L-4.7 -119.9L-2.1 -120.4L-0.4 -120.5L1.3 -120.5L3.9 -120.1L5.6 -119.7L7.9 -118.8L10.1 -117.7L11.7 -116.6L12.4 -116L13.9 -114.7L14.1 -114.3L14.2 -113.9L14 -113.3L13.6 -112.9L13.1 -112.7L12.6 -112.7L12.1 -112.9L11 -113.9L9.4 -115.2L8.2 -115.9L6.9 -116.5L4.8 -117.3L3.4 -117.7L1.9 -117.9L0.3 -118L-1.2 -118L-2.7 -117.8L-4.2 -117.5L-6.3 -116.8L-7.6 -116.2L-9.5 -115.1L-10.6 -114.3L-12.1 -112.9L-12.5 -112.7L-13.1 -112.7L-13.7 -112.9L-14 -113.3L-14.2 -113.9ZM12.7 -112.7L12.7 -112.7L12.7 -112.7L12.7 -112.7ZM14.1 -113.5L14.1 -113.5L14.1 -113.5L14.1 -113.5ZM11.7 -116.6L11.7 -116.6L11.7 -116.6L11.7 -116.6ZM-12.6 -33L-12.6 -44.5L-8 -44.5L-8 -49L-3.3 -49L-3.3 -53.5L1.3 -53.5L1.3 -58L12.6 -58L12.6 -24L6 -24L6 -33L-12.6 -33ZM-1.4 -41.9L-6 -41.9L-6 -40.1L6 -40.1L6 -50.9L3.3 -50.9L3.3 -46.4L-1.4 -46.4L-1.4 -41.9ZM-10.6 -110.4L-10.6 -110.7L-10.4 -111.1L-9.3 -112.1L-7.8 -113.2L-6 -114.2L-4.1 -114.9L-2.8 -115.2L-1.4 -115.4L0 -115.5L1.4 -115.4L2.8 -115.2L4.2 -114.9L6.1 -114.2L7.8 -113.2L9.4 -112.1L10.4 -111.1L10.6 -110.8L10.6 -110.4L10.5 -109.8L10.2 -109.4L9.6 -109.1L9.1 -109.2L8.6 -109.4L7.7 -110.2L6.7 -110.9L5.7 -111.5L4.8 -112L3.8 -112.4L2.4 -112.8L1.4 -112.9L-0.2 -113L-1.2 -112.9L-2.3 -112.8L-3.3 -112.5L-4.7 -112L-5.6 -111.6L-6.4 -111.1L-7.6 -110.3L-8.6 -109.4L-9.1 -109.2L-9.6 -109.1L-10.1 -109.4L-10.5 -109.8L-10.6 -110.4ZM10.6 -110.6L10.6 -110.6L10.6 -110.6L10.6 -110.6ZM-10 -111.5L-10 -111.5L-10 -111.5L-10 -111.5ZM4.3 -80.8L4.3 -85.2L5.1 -85.2L5.1 -86L7.9 -86L7.9 -85.2L8.8 -85.2L8.8 -84L7.6 -84L7.6 -84.8L5.5 -84.8L5.5 -83.6L7.1 -83.6L7.1 -82.4L5.5 -82.4L5.5 -81.2L7.6 -81.2L7.6 -82L8.8 -82L8.8 -80.8L7.9 -80.8L7.9 -80L5.1 -80L5.1 -80.8L4.3 -80.8ZM0.8 -8.7L0.8 -16.4L2.6 -16.4L2.6 -9.4L5.7 -9.4L5.7 -16.4L7.4 -16.4L7.4 -8.7L6.2 -8.7L6.2 -7.6L2 -7.6L2 -8.7L0.8 -8.7ZM-7.1 -106.8L-7 -107.3L-6.7 -107.7L-5.7 -108.6L-4.5 -109.4L-3.4 -109.9L-2.2 -110.2L-1 -110.4L-0.2 -110.5L0.7 -110.5L1.9 -110.3L3.1 -110L4.2 -109.5L5.3 -108.9L6.4 -108L6.9 -107.5L7 -107.2L7.1 -106.8L7 -106.4L6.7 -106L6.3 -105.7L5.9 -105.6L5.5 -105.6L5.2 -105.8L3.9 -106.8L2.9 -107.4L1.7 -107.8L0.8 -108L-0.2 -108L-0.8 -108L-1.4 -107.8L-2.4 -107.6L-3.7 -106.9L-4.4 -106.4L-5.1 -105.8L-5.6 -105.6L-6.2 -105.6L-6.6 -105.9L-7 -106.3L-7.1 -106.8ZM0.7 -110.5L0.7 -110.5L0.7 -110.5L0.7 -110.5ZM-6 -108.3L-6 -108.3L-6 -108.3L-6 -108.3ZM-6.9 -107.4L-6.9 -107.4L-6.9 -107.4L-6.9 -107.4ZM-1.3 -80L-1.3 -86L-0.1 -86L-0.1 -83.6L0.3 -83.6L0.3 -84.4L1.5 -84.4L1.5 -83.6L2 -83.6L2 -86L3.2 -86L3.2 -80L2 -80L2 -82.4L-0.1 -82.4L-0.1 -80L-1.3 -80ZM-2.4 -100.9L-2.4 -101.4L-2.3 -101.8L-2.1 -102.2L-1.7 -102.6L-1.4 -103L-1 -103.2L-0.6 -103.3L-0.1 -103.4L0.4 -103.4L0.8 -103.3L1.2 -103.1L1.6 -102.8L1.9 -102.4L2.2 -102L2.3 -101.5L2.4 -101.1L2.4 -100.6L2.2 -100.2L2.1 -99.8L1.8 -99.4L1.4 -99.1L1 -98.8L0.6 -98.7L0.1 -98.6L-0.3 -98.6L-0.8 -98.7L-1.2 -98.9L-1.6 -99.2L-1.9 -99.6L-2.2 -100L-2.3 -100.4L-2.4 -100.9ZM0.9 -98.8L0.9 -98.8L0.9 -98.8L0.9 -98.8ZM1 -98.8L1 -98.8L1 -98.8L1 -98.8ZM0.6 -103.3L0.6 -103.3L0.6 -103.3L0.6 -103.3ZM-0.2 -103.4L-0.2 -103.4L-0.2 -103.4L-0.2 -103.4ZM-2.2 -101.9L-2.2 -101.9L-2.2 -101.9L-2.2 -101.9ZM-1.1 -98.8L-1.1 -98.8L-1.1 -98.8L-1.1 -98.8ZM-7.4 -8.7L-7.4 -15.3L-6.2 -15.3L-6.2 -16.4L-2 -16.4L-2 -15.3L-0.8 -15.3L-0.8 -12.2L-2.6 -12.2L-2.6 -14.6L-5.7 -14.6L-5.7 -9.4L-2.6 -9.4L-2.6 -9.9L-3.8 -9.9L-3.8 -11.1L-5 -11.1L-5 -12.9L-3.2 -12.9L-3.2 -11.8L-0.8 -11.8L-0.8 -8.7L-2 -8.7L-2 -7.6L-6.2 -7.6L-6.2 -8.7L-7.4 -8.7ZM-8.8 -80L-8.8 -85.2L-8 -85.2L-8 -86L-5.1 -86L-5.1 -85.2L-4.3 -85.2L-4.3 -82.4L-5.1 -82.4L-5.1 -81.6L-7.6 -81.6L-7.6 -80L-8.8 -80ZM-5.5 -82.8L-5.5 -84.8L-7.6 -84.8L-7.6 -82.8L-5.5 -82.8ZM-15.6 -7.6L-15.6 -16.4L-13.9 -16.4L-13.9 -15.3L-12.6 -15.3L-12.6 -14.1L-11.4 -14.1L-11.4 -10.6L-10.8 -10.6L-10.8 -16.4L-9 -16.4L-9 -7.6L-10.8 -7.6L-10.8 -8.7L-12 -8.7L-12 -9.9L-13.2 -9.9L-13.2 -13.4L-13.9 -13.4L-13.9 -7.6L-15.6 -7.6ZM-14.4 -84.4L-13.6 -84.4L-13.6 -85.2L-12.7 -85.2L-12.7 -86L-11.6 -86L-11.6 -85.2L-10.7 -85.2L-10.7 -84.4L-9.9 -84.4L-9.9 -80L-11.1 -80L-11.1 -81.6L-13.2 -81.6L-13.2 -80L-14.4 -80L-14.4 -84.4ZM-12.4 -84L-13.2 -84L-13.2 -82.8L-11.1 -82.8L-11.1 -84L-11.9 -84L-11.9 -84.8L-12.4 -84.8L-12.4 -84ZM-20 -84L-20 -85.2L-19.2 -85.2L-19.2 -86L-16.4 -86L-16.4 -85.2L-15.5 -85.2L-15.5 -84L-16.7 -84L-16.7 -84.8L-17.2 -84.8L-17.2 -80L-18.3 -80L-18.3 -84.8L-18.8 -84.8L-18.8 -84L-20 -84ZM-25.8 -124L-25.8 -133L-25 -133L-25 -133.8L-16 -133.8L-16 -132.2L-24.2 -132.2L-24.2 -124L-25.8 -124ZM-25.8 -67L-25.8 -76L-24.2 -76L-24.2 -67.8L-16 -67.8L-16 -66.2L-25 -66.2L-25 -67L-25.8 -67ZM-23.8 -14.1L-22.6 -14.1L-22.6 -15.3L-21.4 -15.3L-21.4 -16.4L-19.6 -16.4L-19.6 -15.3L-18.5 -15.3L-18.5 -14.1L-17.2 -14.1L-17.2 -7.6L-19 -7.6L-19 -9.9L-22.1 -9.9L-22.1 -7.6L-23.8 -7.6L-23.8 -14.1ZM-20.9 -13.4L-22.1 -13.4L-22.1 -11.8L-19 -11.8L-19 -13.4L-20.2 -13.4L-20.2 -14.6L-20.9 -14.6L-20.9 -13.4ZM-32 -7.6L-32 -16.4L-26.6 -16.4L-26.6 -15.3L-25.4 -15.3L-25.4 -13.4L-27.2 -13.4L-27.2 -14.6L-30.3 -14.6L-30.3 -12.9L-27.8 -12.9L-27.8 -11.1L-30.3 -11.1L-30.3 -7.6L-32 -7.6Z"/></symbol>
+<symbol id="inlay5" viewBox="-42 -150 84 152"><path fill-rule="evenodd" d="M25.4 -15.3L26.6 -15.3L26.6 -16.4L30.8 -16.4L30.8 -15.3L32 -15.3L32 -13.4L30.3 -13.4L30.3 -14.6L27.2 -14.6L27.2 -12.9L30.8 -12.9L30.8 -11.8L32 -11.8L32 -8.7L30.8 -8.7L30.8 -7.6L26.6 -7.6L26.6 -8.7L25.4 -8.7L25.4 -10.6L27.2 -10.6L27.2 -9.4L30.3 -9.4L30.3 -11.1L26.6 -11.1L26.6 -12.2L25.4 -12.2L25.4 -15.3ZM16 -133.8L25 -133.8L25 -133L25.8 -133L25.8 -124L24.2 -124L24.2 -132.2L16 -132.2L16 -133.8ZM16 -66.2L16 -67.8L24.2 -67.8L24.2 -76L25.8 -76L25.8 -67L25 -67L25 -66.2L16 -66.2ZM17.2 -8.7L17.2 -16.4L19 -16.4L19 -9.4L22.1 -9.4L22.1 -16.4L23.8 -16.4L23.8 -8.7L22.6 -8.7L22.6 -7.6L18.4 -7.6L18.4 -8.7L17.2 -8.7ZM15.5 -80.8L15.5 -85.2L16.3 -85.2L16.3 -86L19.2 -86L19.2 -85.2L20 -85.2L20 -84L18.8 -84L18.8 -84.8L16.7 -84.8L16.7 -83.6L18.4 -83.6L18.4 -82.4L16.7 -82.4L16.7 -81.2L18.8 -81.2L18.8 -82L20 -82L20 -80.8L19.2 -80.8L19.2 -80L16.3 -80L16.3 -80.8L15.5 -80.8ZM9 -8.7L9 -16.4L10.8 -16.4L10.8 -9.4L13.9 -9.4L13.9 -10.6L15.6 -10.6L15.6 -8.7L14.4 -8.7L14.4 -7.6L10.2 -7.6L10.2 -8.7L9 -8.7ZM9.9 -80L9.9 -85.2L10.7 -85.2L10.7 -86L13.6 -86L13.6 -85.2L14.4 -85.2L14.4 -82.4L13.6 -82.4L13.6 -81.6L13.2 -81.6L13.2 -81.2L14 -81.2L14 -80L12.8 -80L12.8 -80.8L12 -80.8L12 -81.6L11.1 -81.6L11.1 -80L9.9 -80ZM13.2 -82.8L13.2 -84.8L11.1 -84.8L11.1 -82.8L13.2 -82.8ZM-14.2 -113.9L-14.1 -114.3L-13.9 -114.7L-12.6 -115.9L-10.7 -117.3L-8.6 -118.5L-6.3 -119.4L-4.7 -119.9L-2.1 -120.4L-0.4 -120.5L1.3 -120.5L3.9 -120.1L5.6 -119.7L7.9 -118.8L10.1 -117.7L11.7 -116.6L12.4 -116L13.9 -114.7L14.1 -114.3L14.2 -113.9L14 -113.3L13.6 -112.9L13.1 -112.7L12.6 -112.7L12.1 -112.9L11 -113.9L9.4 -115.2L8.2 -115.9L6.9 -116.5L4.8 -117.3L3.4 -117.7L1.9 -117.9L0.3 -118L-1.2 -118L-2.7 -117.8L-4.2 -117.5L-6.3 -116.8L-7.6 -116.2L-9.5 -115.1L-10.6 -114.3L-12.1 -112.9L-12.5 -112.7L-13.1 -112.7L-13.7 -112.9L-14 -113.3L-14.2 -113.9ZM12.7 -112.7L12.7 -112.7L12.7 -112.7L12.7 -112.7ZM14.1 -113.5L14.1 -113.5L14.1 -113.5L14.1 -113.5ZM11.7 -116.6L11.7 -116.6L11.7 -116.6L11.7 -116.6ZM-12.6 -41.9L-12.6 -53.5L-8 -53.5L-8 -58L7.9 -58L7.9 -53.5L12.6 -53.5L12.6 -41.9L6 -41.9L6 -50.9L-6 -50.9L-6 -44.6L-1.4 -44.6L-1.4 -40.1L7.9 -40.1L7.9 -35.6L12.6 -35.6L12.6 -28.5L7.9 -28.5L7.9 -24L-8 -24L-8 -28.5L-12.6 -28.5L-12.6 -35.6L-6 -35.6L-6 -31.1L6 -31.1L6 -33L-3.4 -33L-3.4 -37.4L-8 -37.4L-8 -41.9L-12.6 -41.9ZM-10.6 -110.4L-10.6 -110.7L-10.4 -111.1L-9.3 -112.1L-7.8 -113.2L-6 -114.2L-4.1 -114.9L-2.8 -115.2L-1.4 -115.4L0 -115.5L1.4 -115.4L2.8 -115.2L4.2 -114.9L6.1 -114.2L7.8 -113.2L9.4 -112.1L10.4 -111.1L10.6 -110.8L10.6 -110.4L10.5 -109.8L10.2 -109.4L9.6 -109.1L9.1 -109.2L8.6 -109.4L7.7 -110.2L6.7 -110.9L5.7 -111.5L4.8 -112L3.8 -112.4L2.4 -112.8L1.4 -112.9L-0.2 -113L-1.2 -112.9L-2.3 -112.8L-3.3 -112.5L-4.7 -112L-5.6 -111.6L-6.4 -111.1L-7.6 -110.3L-8.6 -109.4L-9.1 -109.2L-9.6 -109.1L-10.1 -109.4L-10.5 -109.8L-10.6 -110.4ZM10.6 -110.6L10.6 -110.6L10.6 -110.6L10.6 -110.6ZM-10 -111.5L-10 -111.5L-10 -111.5L-10 -111.5ZM4.3 -80.8L4.3 -85.2L5.1 -85.2L5.1 -86L7.9 -86L7.9 -85.2L8.8 -85.2L8.8 -84L7.6 -84L7.6 -84.8L5.5 -84.8L5.5 -83.6L7.1 -83.6L7.1 -82.4L5.5 -82.4L5.5 -81.2L7.6 -81.2L7.6 -82L8.8 -82L8.8 -80.8L7.9 -80.8L7.9 -80L5.1 -80L5.1 -80.8L4.3 -80.8ZM0.8 -8.7L0.8 -16.4L2.6 -16.4L2.6 -9.4L5.7 -9.4L5.7 -16.4L7.4 -16.4L7.4 -8.7L6.2 -8.7L6.2 -7.6L2 -7.6L2 -8.7L0.8 -8.7ZM-7.1 -106.8L-7 -107.3L-6.7 -107.7L-5.7 -108.6L-4.5 -109.4L-3.4 -109.9L-2.2 -110.2L-1 -110.4L-0.2 -110.5L0.7 -110.5L1.9 -110.3L3.1 -110L4.2 -109.5L5.3 -108.9L6.4 -108L6.9 -107.5L7 -107.2L7.1 -106.8L7 -106.4L6.7 -106L6.3 -105.7L5.9 -105.6L5.5 -105.6L5.2 -105.8L3.9 -106.8L2.9 -107.4L1.7 -107.8L0.8 -108L-0.2 -108L-0.8 -108L-1.4 -107.8L-2.4 -107.6L-3.7 -106.9L-4.4 -106.4L-5.1 -105.8L-5.6 -105.6L-6.2 -105.6L-6.6 -105.9L-7 -106.3L-7.1 -106.8ZM-6 -108.3L-6 -108.3L-6 -108.3L-6 -108.3ZM-6.9 -107.4L-6.9 -107.4L-6.9 -107.4L-6.9 -107.4ZM0.7 -110.5L0.7 -110.5L0.7 -110.5L0.7 -110.5ZM-1.3 -80L-1.3 -86L-0.1 -86L-0.1 -83.6L0.3 -83.6L0.3 -84.4L1.5 -84.4L1.5 -83.6L2 -83.6L2 -86L3.2 -86L3.2 -80L2 -80L2 -82.4L-0.1 -82.4L-0.1 -80L-1.3 -80ZM-2.4 -100.9L-2.4 -101.4L-2.3 -101.8L-2.1 -102.2L-1.7 -102.6L-1.4 -103L-1 -103.2L-0.6 -103.3L-0.1 -103.4L0.4 -103.4L0.8 -103.3L1.2 -103.1L1.6 -102.8L1.9 -102.4L2.2 -102L2.3 -101.5L2.4 -101.1L2.4 -100.6L2.2 -100.2L2.1 -99.8L1.8 -99.4L1.4 -99.1L1 -98.8L0.6 -98.7L0.1 -98.6L-0.3 -98.6L-0.8 -98.7L-1.2 -98.9L-1.6 -99.2L-1.9 -99.6L-2.2 -100L-2.3 -100.4L-2.4 -100.9ZM-1.1 -98.8L-1.1 -98.8L-1.1 -98.8L-1.1 -98.8ZM0.9 -98.8L0.9 -98.8L0.9 -98.8L0.9 -98.8ZM1 -98.8L1 -98.8L1 -98.8L1 -98.8ZM0.6 -103.3L0.6 -103.3L0.6 -103.3L0.6 -103.3ZM-2.2 -101.9L-2.2 -101.9L-2.2 -101.9L-2.2 -101.9ZM-7.4 -8.7L-7.4 -15.3L-6.2 -15.3L-6.2 -16.4L-2 -16.4L-2 -15.3L-0.8 -15.3L-0.8 -12.2L-2.6 -12.2L-2.6 -14.6L-5.7 -14.6L-5.7 -9.4L-2.6 -9.4L-2.6 -9.9L-3.8 -9.9L-3.8 -11.1L-5 -11.1L-5 -12.9L-3.2 -12.9L-3.2 -11.8L-0.8 -11.8L-0.8 -8.7L-2 -8.7L-2 -7.6L-6.2 -7.6L-6.2 -8.7L-7.4 -8.7ZM-8.8 -80L-8.8 -85.2L-8 -85.2L-8 -86L-5.1 -86L-5.1 -85.2L-4.3 -85.2L-4.3 -82.4L-5.1 -82.4L-5.1 -81.6L-7.6 -81.6L-7.6 -80L-8.8 -80ZM-5.5 -82.8L-5.5 -84.8L-7.6 -84.8L-7.6 -82.8L-5.5 -82.8ZM-15.6 -7.6L-15.6 -16.4L-13.9 -16.4L-13.9 -15.3L-12.6 -15.3L-12.6 -14.1L-11.4 -14.1L-11.4 -10.6L-10.8 -10.6L-10.8 -16.4L-9 -16.4L-9 -7.6L-10.8 -7.6L-10.8 -8.7L-12 -8.7L-12 -9.9L-13.2 -9.9L-13.2 -13.4L-13.9 -13.4L-13.9 -7.6L-15.6 -7.6ZM-14.4 -84.4L-13.6 -84.4L-13.6 -85.2L-12.7 -85.2L-12.7 -86L-11.6 -86L-11.6 -85.2L-10.7 -85.2L-10.7 -84.4L-9.9 -84.4L-9.9 -80L-11.1 -80L-11.1 -81.6L-13.2 -81.6L-13.2 -80L-14.4 -80L-14.4 -84.4ZM-12.4 -84L-13.2 -84L-13.2 -82.8L-11.1 -82.8L-11.1 -84L-11.9 -84L-11.9 -84.8L-12.4 -84.8L-12.4 -84ZM-20 -84L-20 -85.2L-19.2 -85.2L-19.2 -86L-16.4 -86L-16.4 -85.2L-15.5 -85.2L-15.5 -84L-16.7 -84L-16.7 -84.8L-17.2 -84.8L-17.2 -80L-18.3 -80L-18.3 -84.8L-18.8 -84.8L-18.8 -84L-20 -84ZM-25.8 -124L-25.8 -133L-25 -133L-25 -133.8L-16 -133.8L-16 -132.2L-24.2 -132.2L-24.2 -124L-25.8 -124ZM-25.8 -67L-25.8 -76L-24.2 -76L-24.2 -67.8L-16 -67.8L-16 -66.2L-25 -66.2L-25 -67L-25.8 -67ZM-23.8 -14.1L-22.6 -14.1L-22.6 -15.3L-21.4 -15.3L-21.4 -16.4L-19.6 -16.4L-19.6 -15.3L-18.5 -15.3L-18.5 -14.1L-17.2 -14.1L-17.2 -7.6L-19 -7.6L-19 -9.9L-22.1 -9.9L-22.1 -7.6L-23.8 -7.6L-23.8 -14.1ZM-20.9 -13.4L-22.1 -13.4L-22.1 -11.8L-19 -11.8L-19 -13.4L-20.2 -13.4L-20.2 -14.6L-20.9 -14.6L-20.9 -13.4ZM-32 -7.6L-32 -16.4L-26.6 -16.4L-26.6 -15.3L-25.4 -15.3L-25.4 -13.4L-27.2 -13.4L-27.2 -14.6L-30.3 -14.6L-30.3 -12.9L-27.8 -12.9L-27.8 -11.1L-30.3 -11.1L-30.3 -7.6L-32 -7.6Z"/></symbol>
+</defs></svg>
+<header class="bar container">
+  <div>
+    <h1 class="wordmark">FANGULUS</h1>
+    <p class="phase" id="phase">Verbinde…</p>
+  </div>
+  <div class="clock" id="clock">--:--</div>
+</header>
 
-  <div class="banner pixel" id="banner"></div>
+<main class="stage container">
+  <div class="banner" id="banner"></div>
   <section class="howto" id="howto">
-    <p class="who pixel" id="howto-who"></p>
+    <p class="who" id="howto-who"></p>
     <ol>
-      <li><span class="n pixel">1</span><span>Jeder nimmt einen Chip.</span></li>
-      <li><span class="n pixel">2</span><span id="howto-2"></span></li>
-      <li><span class="n pixel">3</span><span>Erobert so viele Stationen wie möglich: Chip dranhalten!</span></li>
+      <li><span class="n">1</span><span>Jeder nimmt einen Chip.</span></li>
+      <li><span class="n">2</span><span id="howto-2"></span></li>
+      <li><span class="n">3</span><span>Erobert so viele Stationen wie möglich: Chip dranhalten!</span></li>
     </ol>
     <p class="fine" id="howto-fine"></p>
   </section>
-  <section class="teams" id="teams"></section>
-  <section class="stations" id="stations"></section>
-
-  <section class="events">
-    <h2>Was passiert ist</h2>
-    <ul id="events"></ul>
-  </section>
-
-  <details>
-    <summary>Spielleitung</summary>
-    <div class="controls">
-      <label>Laufzeit
-        <select id="duration">
-          <option value="300">5 Minuten</option><option value="600">10 Minuten</option>
-          <option value="900">15 Minuten</option><option value="1200">20 Minuten</option>
-        </select>
-      </label>
-      <label>Sperrzeit (s)<input id="cooldown" type="number" min="0" max="300"></label>
-      <label>Autostart<span><input id="autostart" type="checkbox"> erste Karte startet</span></label>
-      <label>Teams<select id="nteams"><option>2</option><option>3</option><option>4</option></select></label>
-      <label>Passwort<input id="admin" type="password" placeholder="Spielleitung"></label>
-      <button class="go" data-action="start">Start</button>
-      <button class="stop" data-action="stop">Stop</button>
-      <button data-action="reset">Neues Spiel</button>
-      <span class="err" id="ctlerr"></span>
-    </div>
-  </details>
+  <div class="board">
+    <section class="teams" id="teams"></section>
+    <section class="events">
+      <h2>Was passiert ist</h2>
+      <ul id="events"></ul>
+    </section>
+  </div>
 </main>
-<button class="topbtn" id="sound">🔇 Ton an</button>
+
+<section class="field" aria-label="Stationen">
+  <div class="stations demo" id="stations" data-boxes="1,2,3,4,5"><figure class="station" style="--i:0"><svg viewBox="0 0 84 152" role="img" aria-label="Station 1"><use href="#plate" class="plate"/><use href="#inlay1" class="inlay"/></svg><figcaption class="info"></figcaption></figure><figure class="station" style="--i:1"><svg viewBox="0 0 84 152" role="img" aria-label="Station 2"><use href="#plate" class="plate"/><use href="#inlay2" class="inlay"/></svg><figcaption class="info"></figcaption></figure><figure class="station" style="--i:2"><svg viewBox="0 0 84 152" role="img" aria-label="Station 3"><use href="#plate" class="plate"/><use href="#inlay3" class="inlay"/></svg><figcaption class="info"></figcaption></figure><figure class="station" style="--i:3"><svg viewBox="0 0 84 152" role="img" aria-label="Station 4"><use href="#plate" class="plate"/><use href="#inlay4" class="inlay"/></svg><figcaption class="info"></figcaption></figure><figure class="station" style="--i:4"><svg viewBox="0 0 84 152" role="img" aria-label="Station 5"><use href="#plate" class="plate"/><use href="#inlay5" class="inlay"/></svg><figcaption class="info"></figcaption></figure></div>
+</section>
+
+<div class="admin">
+  <div class="container">
+    <details>
+      <summary>Spielleitung</summary>
+      <div class="controls">
+        <label>Laufzeit
+          <select id="duration">
+            <option value="300">5 Minuten</option><option value="600">10 Minuten</option>
+            <option value="900">15 Minuten</option><option value="1200">20 Minuten</option>
+          </select>
+        </label>
+        <label>Sperrzeit (s)<input id="cooldown" type="number" min="0" max="300"></label>
+        <label>Autostart<span><input id="autostart" type="checkbox"> erste Karte startet</span></label>
+        <label>Teams<select id="nteams"><option>2</option><option>3</option><option>4</option></select></label>
+        <label>Passwort<input id="admin" type="password" placeholder="Spielleitung" autocomplete="current-password"></label>
+        <button type="button" class="btn btn--primary" data-action="start">Start</button>
+        <button type="button" class="btn btn--stop" data-action="stop">Stop</button>
+        <button type="button" class="btn" data-action="reset">Neues Spiel</button>
+        <span class="err" id="ctlerr"></span>
+      </div>
+    </details>
+  </div>
+</div>
+<button type="button" class="btn topbtn" id="sound" aria-pressed="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="mute" d="M17 9l5 6M22 9l-5 6"/><path class="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+  <span>Ton an</span>
+</button>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const teamVar = (i) => `var(--team-${i})`;
 const PHASE = { lobby: "Warten auf Start – Karten jetzt an eine Station halten", running: "Spiel läuft", over: "Spiel vorbei" };
 let page = null, lastEvent = null, owners = [], soundOn = false, said = new Set(), formFilled = false;
 
@@ -138,7 +279,8 @@ function say(text) {
 }
 $("sound").onclick = () => {
   soundOn = !soundOn;
-  $("sound").textContent = soundOn ? "🔊 Ton aus" : "🔇 Ton an";
+  $("sound").setAttribute("aria-pressed", soundOn);
+  $("sound").querySelector("span").textContent = soundOn ? "Ton aus" : "Ton an";
   if (soundOn) say("Ton ist an");
 };
 
@@ -168,6 +310,13 @@ function fmt(sec) {
   return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
 }
 
+// Front einer Station: Deckel und Einlage aus den 3MF-Dateien, ohne Vorlage nur die Nummer
+function front(box, i) {
+  const inlay = $(`inlay${box}`) ? `<use href="#inlay${box}" class="inlay"/>` : `<text class="nr" x="42" y="110">${box}</text>`;
+  return `<figure class="station" style="--i:${i}"><svg viewBox="0 0 84 152" role="img" aria-label="Station ${box}">`
+    + `<use href="#plate" class="plate"/>${inlay}</svg><figcaption class="info"></figcaption></figure>`;
+}
+
 function render(s) {
   const lobby = s.autostart ? "Bereit – die erste Karte an einer Station startet das Spiel" : PHASE.lobby;
   $("phase").textContent = s.phase === "lobby" ? `${lobby} (${s.cards} Karten, max. ${s.max_team} pro Team)` : PHASE[s.phase];
@@ -175,7 +324,7 @@ function render(s) {
   const running = s.phase === "running";
   $("howto").classList.toggle("show", !running);
   if (!running) howto(s);
-  $("stations").style.display = running ? "" : "none";
+  $("stations").classList.toggle("demo", !running);
   document.querySelector('button[data-action="start"]').disabled = s.phase === "running";
   $("clock").classList.toggle("low", s.phase === "running" && s.remaining <= 60);
 
@@ -187,47 +336,53 @@ function render(s) {
   } else said.clear();
 
   const banner = $("banner");
-  banner.className = "banner pixel";
+  banner.className = "banner";
+  banner.style.removeProperty("--c");
+  const tone = (t, i) => { banner.dataset.tone = t; banner.dataset.team = i ?? ""; if (i != null) banner.style.setProperty("--c", teamVar(i)); };
   if (s.phase === "running" && s.domination !== null) {
     const t = s.teams[s.domination];
     banner.textContent = `Team ${t.team} hält alle Stationen – doppelte Punkte!`;
-    banner.style.background = rgb(t.color, 0.85);
+    tone("team", s.domination);
     banner.classList.add("show", "dom");
   } else if (s.phase === "running" && s.all_claimed) {
     banner.textContent = "Alle Stationen erobert – die Punkte zählen!";
-    banner.style.background = "#3a3150";
+    tone("pear");
     banner.classList.add("show");
   } else if (s.phase === "running") {
     banner.textContent = "Erobert alle Stationen – erst dann zählen die Punkte";
-    banner.style.background = "#2a2438";
+    tone("plain");
     banner.classList.add("show");
   } else if (s.last) {
     const w = s.last.winner !== null ? s.last.teams[s.last.winner] : null;
     const pre = s.phase === "over" ? "" : "Letzte Runde: ";
     banner.textContent = pre + (w ? `Team ${w.team} gewinnt!` : "Unentschieden!");
-    banner.style.background = w ? rgb(w.color, 0.85) : "#3a3150";
+    if (w) tone("team", s.last.winner); else tone("plain");
     banner.classList.add("show");
   }
 
   // im Spiel der aktuelle Stand, sonst das Ergebnis der letzten Runde
   const teams = running ? s.teams : (s.last ? s.last.teams : []);
-  $("teams").innerHTML = teams.map((t) => `
-    <div class="team" style="border-color:${rgb(t.color)}">
-      <div><div class="name pixel">${t.team}</div><div class="members">${running ? `${t.members} / ${s.max_team} Spieler` : "Punkte letzte Runde"}</div></div>
-      <div class="score pixel">${t.score}</div>
-    </div>`).join("");
+  $("teams").innerHTML = teams.map((t, i) => `
+    <article class="team" style="--c:${teamVar(i)}">
+      <svg class="tag" viewBox="0 0 84 152" aria-hidden="true"><use href="#plate"/></svg>
+      <div><div class="name">${t.team}</div><div class="members">${running ? `${t.members} / ${s.max_team} Spieler` : "Punkte letzte Runde"}</div></div>
+      <div class="score">${t.score}</div>
+    </article>`).join("");
 
   const st = $("stations");
-  if (st.children.length !== s.stations.length) {
-    st.innerHTML = s.stations.map((x) => `<div class="station"><div class="nr pixel">${x.box}</div><div class="info"></div></div>`).join("");
+  const boxes = s.stations.map((x) => x.box).join(",");
+  if (st.dataset.boxes !== boxes) {
+    st.innerHTML = s.stations.map((x, i) => front(x.box, i)).join("");
+    st.dataset.boxes = boxes;
   }
   s.stations.forEach((x, i) => {
     const el = st.children[i];
     const t = x.owner !== null ? s.teams[x.owner] : null;
-    el.style.background = t ? rgb(t.color, 0.9) : "";
+    if (t) el.style.setProperty("--c", teamVar(x.owner)); else el.style.removeProperty("--c");
+    el.classList.toggle("owned", !!t);
     el.classList.toggle("offline", !x.online);
     el.classList.toggle("dom", s.phase === "running" && s.domination !== null);
-    let info = !x.online ? "offline" : t ? t.team : "neutral";
+    let info = !x.online ? "offline" : t ? t.team : running ? "neutral" : "";
     if (x.online && x.lock_left > 0 && s.phase === "running") info += ` · gesperrt ${Math.ceil(x.lock_left)} s`;
     el.querySelector(".info").textContent = info;
     if (owners.length && owners[i] !== x.owner && x.owner !== null) {
