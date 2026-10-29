@@ -302,6 +302,9 @@ def build():
         print("Front %d       valid=%s solids=%d/%d" % (
             nr, lid_nr.isValid() and inlay_nr.isValid(), len(lid_nr.Solids), len(inlay_nr.Solids)))
         export_print({"Deckel": lid_nr, "Deckel_Logo": inlay_nr}, "Front_%d" % nr)
+    # PrusaSlicer-Projekte fuer die MK4 ohne MMU (zwei Fronten je Platte, Farbwechsel per M600)
+    import runpy
+    runpy.run_path(os.path.join(OUT_DIR, "prusa_3mf.py"), run_name="__main__")
 
     for name in ("Unterteil", "Deckel", "Deckel_Logo"):
         s = objs[name].Shape

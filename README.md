@@ -64,6 +64,7 @@ Am C6 Super Mini liegen die RC522-Pins nebeneinander auf der Leiste mit TX/RX; a
   - `DiscCase_Druck_Bambu.3mf`: druckfertig für Bambu Lab (X1C-Profil, Unterteil + zweifarbiger Deckel von Station 1)
   - `DiscCase_Unterteil.stl`: nur das Unterteil
   - `DiscCase_Front_1_Bambu.3mf` … `DiscCase_Front_5_Bambu.3mf`: nur der Deckel je Station („FANGULUS“ + Nummer 1–5), Logo auf Filament 2
+  - `DiscCase_Prusa_Front_1_2.3mf`, `_3_4.3mf`, `_5.3mf`: PrusaSlicer-2.9-Projekte für die Prusa MK4 ohne MMU, zwei Fronten je Platte. Logo auf Extruder 1 (schwarz), Deckel auf Extruder 2; der Drucker hält per M600 je einmal in Schicht 1, 2 und 3 zum Filamentwechsel an, danach läuft der Rest ohne Eingriff. Erzeugt von `prusa_3mf.py` aus `prusa_mk4.ini` (MK4 Input Shaper, 0.20mm SPEED, Generic PLA). Nicht mit PrusaSlicer 3.0 alpha öffnen.
   - `PixelifySans-Bold.ttf`: Schrift für alle Texte (Pixelify Sans, statische Bold-Instanz, SIL Open Font License)
 
 ## Spiel
