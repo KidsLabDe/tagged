@@ -1,8 +1,12 @@
 # Vorlage fuer settings.toml auf dem Board (CIRCUITPY). Nur TAGGED_BOX_ID unterscheidet sich je Box.
 CIRCUITPY_WIFI_SSID = "WLAN-Name"
 CIRCUITPY_WIFI_PASSWORD = "WLAN-Passwort"
+# weitere WLANs, durchnummeriert ab 2 ohne Luecke; das erste bekannte in Reichweite wird genommen
+# TAGGED_WIFI_SSID_2 = "Zweites-WLAN"
+# TAGGED_WIFI_PASSWORD_2 = "Passwort"
 TAGGED_BOARD = "s2mini"   # oder "c6"
 TAGGED_BOX_ID = 1
 TAGGED_SERVER = "fangulus.kidslab.de"   # zum Testen auch "192.168.178.13:8090"
 TAGGED_TOKEN = "wie TAGGED_TOKEN auf dem Server"
 TAGGED_BRIGHTNESS = 25   # Helligkeit des LED-Rings in Prozent
+# TAGGED_LED_PIN = 14     # nur falls der LED-Streifen nicht am Standard-Pin haengt (C6: GPIO20, S2 Mini: IO40)

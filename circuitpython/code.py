@@ -9,7 +9,8 @@ import digitalio
 import microcontroller
 import neopixel_write
 import supervisor
-from net import Net
+import wifi
+from net import WIFI_RETRY, Net
 from rc522 import RC522
 
 # ---- Einstellungen: Standardwerte, settings.toml hat Vorrang --------------------------------------------------
@@ -18,6 +19,7 @@ BOX_ID = int(os.getenv("TAGGED_BOX_ID", 1))  # Nummer der Box (1-5), passend zur
 SERVER = os.getenv("TAGGED_SERVER", "fangulus.kidslab.de")  # Host, optional mit :Port
 TOKEN = os.getenv("TAGGED_TOKEN", "")
 BRIGHTNESS = int(os.getenv("TAGGED_BRIGHTNESS", 25)) / 100  # Prozent; 25 LEDs voll weiss waeren ~1.5 A
+LED_PIN = os.getenv("TAGGED_LED_PIN")  # GPIO-Nummer, falls der LED-Streifen nicht am Standard-Pin haengt
 # --------------------------------------------------------------------------------------------------------------
 
 # RC522 (SDA = Chip Select) und LED-Streifen je Board, als GPIO-Nummer
@@ -35,9 +37,11 @@ def gpio(name):
 
 if BOARD not in PINS:
     raise ValueError("TAGGED_BOARD muss 's2mini' oder 'c6' sein, nicht %r" % BOARD)
+if LED_PIN is not None:
+    PINS[BOARD]["leds"] = int(LED_PIN)
 if CHIP[BOARD] not in os.uname().machine.replace("-", "").upper():
     print("!!! TAGGED_BOARD = %r passt nicht zum Chip: %s" % (BOARD, os.uname().machine))
-print("Tagged! Box %d auf %s, Server %s, Helligkeit %d%%" % (BOX_ID, BOARD, SERVER, BRIGHTNESS * 100))
+print("Tagged! Box %d auf %s, Server %s, Helligkeit %d%%, LEDs an GPIO%d" % (BOX_ID, BOARD, SERVER, BRIGHTNESS * 100, PINS[BOARD]["leds"]))
 
 NUM_LEDS = 25
 
@@ -52,6 +56,8 @@ OFFLINE_AFTER = 3  # so viele Fehlversuche, bevor die Station "offline" zeigt
 
 WHITE = (200, 200, 200)
 ORANGE = (255, 80, 0)
+YELLOW = (255, 180, 0)
+GREEN = (0, 255, 0)
 
 def onboard_leds_off():
     """Eingebaute LEDs des Boards aus (C6 Super Mini: RGB auf GPIO8 zeigt sonst den CircuitPython-Status)."""
@@ -120,6 +126,14 @@ def spin_frame(t, color, spin=SPIN_TIME, gain=1.0):
         else:
             set_led(i, 0, 0, 0)
     show()
+
+
+def wifi_frame(t):
+    """Kein WLAN: der ganze Ring blinkt gelb."""
+    if t % 1.0 < 0.5:
+        fill(*scaled(YELLOW, 0.6))
+    else:
+        fill(0, 0, 0)
 
 
 def offline_frame(t):
@@ -232,6 +246,11 @@ if v in (0x00, 0xFF):
         time.sleep(0.5)
 
 net = Net(SERVER, TOKEN)
+fill(*scaled(YELLOW, 0.15))  # sucht WLAN (die Verbindung blockiert, deshalb ohne Animation)
+if net.connect_wifi():
+    blink(GREEN, 1)
+else:
+    net.next_wifi = time.monotonic() + WIFI_RETRY  # Schleife blinkt gelb und versucht es spaeter neu
 state = None
 fails = 0
 next_server = 0
@@ -242,7 +261,9 @@ next_poll = 0
 
 while True:
     now = time.monotonic()
-    if fails >= OFFLINE_AFTER:
+    if not wifi.radio.connected:
+        wifi_frame(now)
+    elif fails >= OFFLINE_AFTER:
         offline_frame(now)
     else:
         frame(now, state)

@@ -76,7 +76,7 @@ Karten sind Spieler, Teams sind Farben, die 5 Stationen sind die „Türme“.
 - **Punkte:** Erst wenn keine Station mehr neutral ist, bekommt jedes Team pro Sekunde 1 Punkt pro Station. Hält ein Team alle Stationen, zählt es doppelt, und alle Stationen pulsieren.
 - **Ende:** Nach der Laufzeit (Standard 10 min) leuchten alle Stationen in der Siegerfarbe.
 
-Anzeige am Ring: Lobby = weiß atmend, neutral = weißer Lauf, erobert = Lauf in Teamfarbe (langsam und gedimmt während der Sperre), kein Server = erste LED blinkt orange.
+Anzeige am Ring: Lobby = weiß atmend, neutral = weißer Lauf, erobert = Lauf in Teamfarbe (langsam und gedimmt während der Sperre), kein Server = erste LED blinkt orange, kein WLAN = ganzer Ring blinkt gelb. Beim Start leuchtet der Ring nach dem Regenbogen gedimmt gelb, solange die Station ein WLAN sucht, und blinkt einmal grün, wenn sie verbunden ist.
 
 ### Server
 
@@ -94,7 +94,7 @@ Dann auf den Boards `TAGGED_SERVER = "<IP des Laptops>:8090"` setzen.
 
 ## Firmware aufspielen
 
-Der S2 Mini taucht mit CircuitPython als Laufwerk `CIRCUITPY` auf: `code.py`, `net.py` und `rc522.py` einfach draufkopieren, dazu eine `settings.toml` nach der Vorlage `settings.toml.example`. Alle Boxen haben dieselbe `code.py`, nur `TAGGED_BOX_ID` (und ggf. `TAGGED_BOARD`) unterscheidet sich. Die Helligkeit des LED-Rings stellt `TAGGED_BRIGHTNESS` in Prozent ein (Standard 25).
+Der S2 Mini taucht mit CircuitPython als Laufwerk `CIRCUITPY` auf: `code.py`, `net.py` und `rc522.py` einfach draufkopieren, dazu eine `settings.toml` nach der Vorlage `settings.toml.example`. Alle Boxen haben dieselbe `code.py`, nur `TAGGED_BOX_ID` (und ggf. `TAGGED_BOARD`) unterscheidet sich. Die Helligkeit des LED-Rings stellt `TAGGED_BRIGHTNESS` in Prozent ein (Standard 25). Hängt der LED-Streifen an einem anderen Pin als in der Tabelle, setzt `TAGGED_LED_PIN` die GPIO-Nummer (Box 2 hat ihn an GPIO14). Weitere WLANs kommen als `TAGGED_WIFI_SSID_2`/`TAGGED_WIFI_PASSWORD_2`, `_3` usw. dazu; die Station nimmt das erste bekannte Netz in Reichweite, `CIRCUITPY_WIFI_SSID` zuerst.
 Für Boards ohne USB-Laufwerk (z. B. ESP32-C6):
 
 ```sh
