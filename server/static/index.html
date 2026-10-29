@@ -125,7 +125,7 @@
 const $ = (id) => document.getElementById(id);
 const rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const PHASE = { lobby: "Warten auf Start – Karten jetzt an eine Station halten", running: "Spiel läuft", over: "Spiel vorbei" };
-let lastEvent = null, owners = [], soundOn = false, said = new Set(), formFilled = false;
+let page = null, lastEvent = null, owners = [], soundOn = false, said = new Set(), formFilled = false;
 
 // ---- Sprachausgabe ---------------------------------------------------------------------------------------------
 function say(text) {
@@ -157,7 +157,9 @@ function howto(s) {
   $("howto-2").textContent = `Lauft zu den Stationen und haltet den Chip dran – ihr seht, ob ihr ${teams} seid.`;
   $("howto-fine").textContent = `Sobald alle Stationen eine Farbe haben, gibt es Punkte. Hält ein Team alle, zählt es doppelt. `
     + `Nach einer Eroberung ist die Station ${s.cooldown} Sekunden gesperrt.`
-    + (s.phase === "lobby" && s.autostart ? " Der erste Chip an einer Station startet das Spiel." : "");
+    + (!s.autostart ? "" : s.phase === "lobby" ? " Der erste Chip an einer Station startet das Spiel."
+       : s.next_in > 0 ? ` In ${s.next_in} Sekunden startet der nächste Chip ein neues Spiel.`
+       : " Der erste Chip an einer Station startet ein neues Spiel.");
 }
 
 // ---- Anzeige ---------------------------------------------------------------------------------------------------
@@ -170,8 +172,10 @@ function render(s) {
   const lobby = s.autostart ? "Bereit – die erste Karte an einer Station startet das Spiel" : PHASE.lobby;
   $("phase").textContent = s.phase === "lobby" ? `${lobby} (${s.cards} Karten, max. ${s.max_team} pro Team)` : PHASE[s.phase];
   $("clock").textContent = fmt(s.remaining);
-  $("howto").classList.toggle("show", s.phase !== "running");
-  if (s.phase !== "running") howto(s);
+  const running = s.phase === "running";
+  $("howto").classList.toggle("show", !running);
+  if (!running) howto(s);
+  $("stations").style.display = running ? "" : "none";
   document.querySelector('button[data-action="start"]').disabled = s.phase === "running";
   $("clock").classList.toggle("low", s.phase === "running" && s.remaining <= 60);
 
@@ -197,16 +201,19 @@ function render(s) {
     banner.textContent = "Erobert alle Stationen – erst dann zählen die Punkte";
     banner.style.background = "#2a2438";
     banner.classList.add("show");
-  } else if (s.phase === "over") {
-    const w = s.winner !== null ? s.teams[s.winner] : null;
-    banner.textContent = w ? `Team ${w.team} gewinnt!` : "Unentschieden!";
+  } else if (s.last) {
+    const w = s.last.winner !== null ? s.last.teams[s.last.winner] : null;
+    const pre = s.phase === "over" ? "" : "Letzte Runde: ";
+    banner.textContent = pre + (w ? `Team ${w.team} gewinnt!` : "Unentschieden!");
     banner.style.background = w ? rgb(w.color, 0.85) : "#3a3150";
     banner.classList.add("show");
   }
 
-  $("teams").innerHTML = s.teams.map((t) => `
+  // im Spiel der aktuelle Stand, sonst das Ergebnis der letzten Runde
+  const teams = running ? s.teams : (s.last ? s.last.teams : []);
+  $("teams").innerHTML = teams.map((t) => `
     <div class="team" style="border-color:${rgb(t.color)}">
-      <div><div class="name pixel">${t.team}</div><div class="members">${t.members} / ${s.max_team} Spieler</div></div>
+      <div><div class="name pixel">${t.team}</div><div class="members">${running ? `${t.members} / ${s.max_team} Spieler` : "Punkte letzte Runde"}</div></div>
       <div class="score pixel">${t.score}</div>
     </div>`).join("");
 
@@ -249,7 +256,10 @@ function render(s) {
 async function poll() {
   try {
     const r = await fetch("api/state", { cache: "no-store" });
-    render(await r.json());
+    const s = await r.json();
+    if (page !== null && s.page !== page) return location.reload();  // neue Version auf dem Server
+    page = s.page;
+    render(s);
   } catch (e) {
     $("phase").textContent = "Keine Verbindung zum Server…";
   }

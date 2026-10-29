@@ -19,6 +19,7 @@ TEAMS = [("Rot", (255, 0, 0)), ("Blau", (0, 0, 255)), ("Grün", (0, 255, 0)), ("
 STATIONS = 5
 OFFLINE_AFTER = 6.0  # Sekunden ohne Abfrage -> Station gilt als offline
 MAX_EVENTS = 50
+RESULT_GRACE = 30  # Sekunden nach Spielende, in denen ein Scan nur das Ergebnis zeigt statt neu zu starten
 MIME = {".html": "text/html; charset=utf-8", ".ttf": "font/ttf", ".js": "text/javascript", ".css": "text/css"}
 
 
@@ -32,6 +33,8 @@ class Game:
         self.last_seen = [0.0] * STATIONS
         self.events = []
         self.event_id = 0
+        self.last = None  # Ergebnis der letzten Runde fuer die Webansicht
+        self.ended_at = 0.0
         self.reset()
 
     # ---- Hilfen ------------------------------------------------------------------------------------------------
@@ -102,7 +105,9 @@ class Game:
             if self.phase != "running":
                 return
             self.phase = "over"
+            self.ended_at = time.monotonic()
             w = self.winner()
+            self.last = {"teams": [dict(self.team_info(t), score=self.scores[t]) for t in range(self.n_teams)], "winner": w}
             if w is None:
                 self.event("Spielende. Unentschieden!", "over")
             else:
@@ -135,7 +140,9 @@ class Game:
         with self.lock:
             i = box - 1
             self.last_seen[i] = time.monotonic()
-            if self.phase == "over":  # nur Rueckmeldung, Spielstand bleibt bis "Neues Spiel"
+            if self.phase == "over" and self.autostart and time.monotonic() - self.ended_at >= RESULT_GRACE:
+                self.reset()  # erster Scan nach dem Spielende: neue Runde, Karten werden neu verteilt
+            if self.phase == "over":  # kurz nach dem Ende nur Rueckmeldung
                 t = self.cards.get(uid)
                 res = self.team_info(t) if t is not None else {}
                 res["result"] = "over"
@@ -219,6 +226,8 @@ class Game:
                 "winner": w,
                 "cards": len(self.cards),
                 "events": self.events,
+                "last": self.last,
+                "next_in": round(max(0.0, RESULT_GRACE - (time.monotonic() - self.ended_at))) if self.phase == "over" else 0,
             }
 
     def control(self, data):
@@ -288,7 +297,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(400, {"error": "uid"})
             return self.send(200, game.scan(box, uid))
         if url.path == "/api/state":
-            return self.send(200, game.state())
+            st = game.state()
+            st["page"] = int(os.path.getmtime(os.path.join(STATIC, "index.html")))  # Seite laedt sich nach Updates neu
+            return self.send(200, st)
         name = "index.html" if url.path == "/" else url.path.lstrip("/")
         if name in os.listdir(STATIC):  # nur Dateien direkt in static/, kein Pfad
             with open(os.path.join(STATIC, name), "rb") as f:

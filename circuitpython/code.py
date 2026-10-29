@@ -138,7 +138,10 @@ def frame(t, st):
     elif st["phase"] == "lobby":
         fill(*scaled(WHITE, 0.1 + 0.4 * breath(t, 3.0)))
     elif st["phase"] == "over":
-        fill(*(st["winner"] or WHITE))
+        if st["winner"]:
+            fill(*st["winner"])
+        else:  # Unentschieden: letzte eigene Farbe atmet langsam, neutral bleibt weiss
+            fill(*scaled(st["owner"] or WHITE, 0.15 + 0.6 * breath(t, 3.0)))
     elif st["domination"]:
         fill(*scaled(st["owner"], 0.2 + 0.8 * breath(t, 0.5)))
     elif st["owner"] is None:
