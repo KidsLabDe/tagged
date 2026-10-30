@@ -19,7 +19,7 @@
   color-scheme: light;
   --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px;
   --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
-  --text-wordmark: clamp(2.25rem, 4.5vw, 3.5rem); --text-clock: clamp(4rem, 9vw, 7.5rem); --text-score: 3.5rem;
+  --text-wordmark: clamp(2.25rem, 4.5vw, 3.5rem); --text-clock: clamp(3.5rem, min(9vw, 13vh), 7.5rem); --text-score: 3.5rem;
   --dur-micro: 120ms; --dur-short: 220ms;
   --container: 1440px; --gutter: 48px;
   --color-paper: oklch(97% 0.012 95); --color-paper-2: oklch(94.5% 0.018 95); --color-paper-3: oklch(91% 0.022 95);
@@ -108,7 +108,7 @@ svg { display: block; }
 .events { padding: var(--space-md) var(--space-lg); border-radius: var(--radius-card); background: var(--grain), var(--fibre), var(--color-paper-2); }
 .events h2 { font-size: var(--text-md); font-weight: 600; color: var(--color-muted); margin-bottom: var(--space-xs); }
 .events ul { list-style: none; margin: 0; padding: 0; }
-.events li { padding: var(--space-2xs) 0; border-bottom: 1px solid var(--color-rule); }
+.events li { padding: 2px 0; font-size: var(--text-md); border-bottom: 1px solid var(--color-rule); }
 .events li:last-child { border: 0; }
 .events time { color: var(--color-muted); font-variant-numeric: tabular-nums; margin-right: var(--space-sm); }
 
@@ -176,6 +176,22 @@ input[type=checkbox] { min-height: 0; width: 20px; height: 20px; accent-color: v
   0%, 100% { fill: var(--color-plate); } 10%, 40% { fill: var(--team-0); } 50% { fill: var(--color-plate); } 60%, 90% { fill: var(--team-1); }
 }
 
+/* ab Laptopbreite passt alles auf einen Bildschirm: die Fronten nehmen die Resthoehe */
+@media (min-width: 60rem) {
+  :root { --text-clock: clamp(3.5rem, min(9vw, 11vh), 7.5rem); }
+  body:not(:has(details[open])) { height: 100dvh; }
+  .bar { padding-block: var(--space-md) var(--space-sm); }
+  .stage { gap: var(--space-md); padding-bottom: 0; }
+  .banner { padding: var(--space-sm) var(--space-lg); font-size: var(--text-xl); }
+  .events { padding: var(--space-sm) var(--space-lg); }
+  .events li:nth-child(n+5) { display: none; }
+  .field { flex: 1 1 0; min-height: 140px; padding-top: var(--space-sm); container-type: size;
+           display: flex; flex-direction: column; justify-content: flex-end; }
+  .stations { width: 100%; padding-bottom: var(--space-sm); }
+  .station svg { width: auto; max-width: 100%; height: min(344px, calc(100cqh - 64px)); }
+  .admin { padding-block: var(--space-sm); }
+  details { padding-block: var(--space-sm); }
+}
 @media (max-width: 60rem) {
   :root { --gutter: 24px; }
   .board { grid-template-columns: minmax(0, 1fr); }
